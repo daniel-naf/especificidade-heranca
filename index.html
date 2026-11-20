@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aula — Especificidade e Herança em CSS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   SISTEMA VISUAL — mesmo das aulas de referência
+   Cores com significado fixo nesta aula:
+   ciano = elemento (C) · âmbar = classe/atributo/pseudo-classe (B)
+   rosa = ID (A) · coral = inline · vermelho = !important
+   verde = herança · violeta = cascata
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#06080f;--s1:#0b0f1c;--s2:#111827;--code:#0a0f1e;
+  --border:#1f2d45;--border2:#283650;
+  --cyan:#00d4ff;--green:#00ff9d;--amber:#ffb800;
+  --red:#ff4d6d;--violet:#a855f7;--pink:#f472b6;--coral:#e08762;
+  --text:#dce6f5;--soft:#9fb0cc;--dim:#6b7fa0;--dim2:#4a5c7a;
+  --f-d:'Syne','Trebuchet MS',system-ui,sans-serif;
+  --f-m:'JetBrains Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  --f-b:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);}
+body{background:var(--bg);color:var(--text);font-family:var(--f-b);overflow:hidden;height:100%;width:100%;position:relative;user-select:none;-webkit-user-select:none;}
+button{font:inherit;color:inherit;}
+.grid-bg{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(0,212,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.028) 1px,transparent 1px);background-size:50px 50px;}
+.scan-line{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,.01) 2px,rgba(0,212,255,.01) 4px);}
+
+/* ── PALCO 1280×720 escalado para qualquer tela ── */
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%) scale(var(--k,1));transform-origin:center center;}
+#prog{position:fixed;top:0;left:0;right:0;height:3px;background:var(--border);z-index:300;}
+#prog-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--cyan),var(--amber),var(--pink),var(--violet));transition:width .4s ease;box-shadow:0 0 8px var(--cyan);}
+
+/* trilho de blocos (progressão) */
+#rail{position:absolute;top:18px;left:64px;right:64px;display:flex;align-items:center;gap:6px;z-index:200;font-family:var(--f-m);font-size:10.5px;letter-spacing:1px;color:var(--dim2);}
+#rail .ri{display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;border:1px solid transparent;cursor:pointer;transition:all .3s;white-space:nowrap;}
+#rail .ri b{font-weight:700;}
+#rail .ri.done{color:var(--dim);}
+#rail .ri.on{color:var(--text);border-color:var(--border2);background:var(--s2);}
+#rail .ri.on b{color:var(--cyan);}
+#rail .sep{width:14px;height:1px;background:var(--border2);}
+#rail .time{margin-left:auto;color:var(--dim);border:1px solid var(--border);border-radius:7px;padding:4px 9px;}
+
+#nav{position:absolute;bottom:25px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:200;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .3s;}
+.dot.gap{margin-left:7px;}
+.dot.on{background:var(--cyan);box-shadow:0 0 8px var(--cyan);transform:scale(1.6);}
+#arrows{position:absolute;bottom:16px;right:64px;display:flex;gap:8px;z-index:200;align-items:center;}
+.abtn{background:var(--s2);border:1px solid var(--border);color:var(--dim);min-width:34px;height:34px;padding:0 9px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:var(--f-m);}
+.abtn:hover{border-color:var(--cyan);color:var(--cyan);}
+.abtn.txt{font-size:10.5px;letter-spacing:.5px;}
+.abtn.act{border-color:var(--amber);color:var(--amber);}
+#hint{font-family:var(--f-m);font-size:10.5px;color:var(--dim);margin-right:6px;display:flex;align-items:center;gap:7px;}
+#hint .pips{display:flex;gap:4px;}
+#hint .pips i{width:6px;height:6px;border-radius:2px;background:var(--border2);}
+#hint .pips i.f{background:var(--amber);box-shadow:0 0 6px var(--amber);}
+#hint.pending .tx{color:var(--amber);}
+#ctr{position:absolute;bottom:26px;left:64px;font-family:var(--f-m);font-size:11px;color:var(--dim);z-index:200;}
+
+/* notas do apresentador */
+#notes{position:absolute;left:64px;right:64px;bottom:58px;z-index:250;background:rgba(11,15,28,.97);border:1px solid rgba(255,184,0,.35);border-radius:12px;padding:14px 20px 14px 20px;display:none;box-shadow:0 -10px 40px rgba(0,0,0,.6);}
+#notes.open{display:block;}
+#notes .nh{font-family:var(--f-m);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:7px;}
+#notes ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:5px 26px;}
+#notes li{font-size:13px;line-height:1.5;color:var(--text);padding-left:15px;position:relative;}
+#notes li::before{content:'›';position:absolute;left:0;color:var(--amber);font-family:var(--f-m);}
+aside.nt{display:none;}
+
+/* ── SLIDES ── */
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:62px 64px 72px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .45s cubic-bezier(.4,0,.2,1),visibility 0s .45s;}
+.slide.on{opacity:1;visibility:visible;pointer-events:all;transition:opacity .45s cubic-bezier(.4,0,.2,1),visibility 0s;}
+.label{font-family:var(--f-m);font-size:11px;color:var(--cyan);letter-spacing:3px;text-transform:uppercase;margin-bottom:11px;text-align:center;}
+h1{font-family:var(--f-d);font-size:78px;font-weight:800;line-height:1;letter-spacing:-2px;text-align:center;}
+h2{font-family:var(--f-d);font-size:35px;font-weight:700;letter-spacing:-1px;line-height:1.12;margin-bottom:20px;text-align:center;max-width:1120px;}
+h3{font-family:var(--f-d);font-size:17px;font-weight:700;margin-bottom:6px;}
+p{font-size:15px;line-height:1.6;color:var(--soft);}
+strong,.tx{color:var(--text);}
+.mono,code{font-family:var(--f-m);}
+code{font-size:.93em;}
+.cyan{color:var(--cyan);}.green{color:var(--green);}.amber{color:var(--amber);}.red{color:var(--red);}
+.violet{color:var(--violet);}.pink{color:var(--pink);}.coral{color:var(--coral);}.dim{color:var(--dim);}.soft{color:var(--soft);}
+
+.w{width:100%;max-width:1152px;}
+.row{display:flex;gap:18px;width:100%;max-width:1152px;align-items:stretch;}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.center{text-align:center;}
+
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:15px 19px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.c-cyan::before{background:linear-gradient(90deg,var(--cyan),transparent);}
+.c-green::before{background:linear-gradient(90deg,var(--green),transparent);}
+.c-amber::before{background:linear-gradient(90deg,var(--amber),transparent);}
+.c-violet::before{background:linear-gradient(90deg,var(--violet),transparent);}
+.c-red::before{background:linear-gradient(90deg,var(--red),transparent);}
+.c-pink::before{background:linear-gradient(90deg,var(--pink),transparent);}
+.c-coral::before{background:linear-gradient(90deg,var(--coral),transparent);}
+.card p{font-size:14px;}
+.note{width:100%;max-width:1152px;margin-top:13px;padding:11px 17px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:11px;font-size:14px;color:var(--soft);line-height:1.6;}
+.note.g{background:rgba(0,255,157,.05);border-color:rgba(0,255,157,.22);}
+.note.a{background:rgba(255,184,0,.05);border-color:rgba(255,184,0,.25);}
+.note.r{background:rgba(255,77,109,.06);border-color:rgba(255,77,109,.28);}
+.note.v{background:rgba(168,85,247,.06);border-color:rgba(168,85,247,.28);}
+.tag{display:inline-block;font-family:var(--f-m);font-size:12px;border-radius:6px;padding:3px 9px;white-space:nowrap;}
+.tag-cyan{background:rgba(0,212,255,.1);color:var(--cyan);border:1px solid rgba(0,212,255,.25);}
+.tag-green{background:rgba(0,255,157,.1);color:var(--green);border:1px solid rgba(0,255,157,.25);}
+.tag-amber{background:rgba(255,184,0,.1);color:var(--amber);border:1px solid rgba(255,184,0,.25);}
+.tag-violet{background:rgba(168,85,247,.1);color:var(--violet);border:1px solid rgba(168,85,247,.25);}
+.tag-red{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.25);}
+.tag-pink{background:rgba(244,114,182,.1);color:var(--pink);border:1px solid rgba(244,114,182,.25);}
+.tag-coral{background:rgba(224,135,98,.1);color:var(--coral);border:1px solid rgba(224,135,98,.3);}
+.tag-dim{background:rgba(107,127,160,.08);color:var(--dim);border:1px solid var(--border2);}
+
+/* entradas */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease;}
+.reveal.vis{opacity:1;transform:translateY(0);}
+.step{opacity:0;transform:translateY(10px);transition:opacity .4s ease,transform .4s ease;pointer-events:none;}
+.step.shown{opacity:1;transform:none;pointer-events:auto;}
+.float-in{animation:fi .8s cubic-bezier(.2,.8,.2,1) both;}
+.fi1{animation-delay:.1s;}.fi2{animation-delay:.25s;}.fi3{animation-delay:.45s;}.fi4{animation-delay:.65s;}
+@keyframes fi{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,184,0,.45);}50%{box-shadow:0 0 0 8px rgba(255,184,0,0);}}
+.cursor-v{display:inline-block;width:6px;height:.86em;background:var(--green);vertical-align:middle;margin-left:6px;animation:blink 1s steps(1) infinite;}
+
+/* dica para quem apresenta (visível no slide) */
+.cue{position:absolute;left:64px;bottom:50px;font-family:var(--f-m);font-size:11.5px;color:rgba(255,184,0,.75);letter-spacing:.2px;}
+.cue::before{content:'🎤 ';}
+
+/* ── CÓDIGO ── */
+.code{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:13px 17px;font-family:var(--f-m);font-size:15px;line-height:1.62;color:var(--soft);white-space:pre;position:relative;text-align:left;}
+.code.sm{font-size:13.5px;line-height:1.58;}
+.code.lg{font-size:19px;}
+.code .cap{position:absolute;top:-7px;left:13px;font-size:9.5px;line-height:1.3;color:var(--dim);letter-spacing:2px;background:var(--code);padding:0 6px;border-radius:4px;}
+.t-el,.t-pe{color:var(--cyan);}
+.t-cls,.t-attr,.t-pc{color:var(--amber);}
+.t-id{color:var(--pink);}
+.t-uni,.t-comb,.t-comma,.t-unk{color:var(--dim);}
+.t-fn{color:var(--soft);}
+.t-prop{color:#c4b5fd;}
+.t-val{color:var(--text);}
+.t-imp{color:var(--red);font-weight:700;}
+.t-inl{color:var(--coral);}
+.p,.h-p{color:var(--dim);}
+.h-a{color:#c4b5fd;}.h-v{color:var(--soft);}.h-t{color:var(--text);}
+.sw{display:inline-block;width:.72em;height:.72em;border-radius:2px;margin-right:.4em;border:1px solid rgba(255,255,255,.35);vertical-align:baseline;}
+
+/* bloco CSS dos demos (regras com placar e marcação estilo DevTools) */
+.cssb{white-space:normal;}
+.cssb .rule{white-space:pre;border-radius:8px;padding:2px 9px;margin:0 -9px;border:1px solid transparent;transition:background .3s,opacity .3s,border-color .2s;}
+.cssb .rule + .rule{margin-top:7px;}
+.cssb.compact .rule + .rule{margin-top:3px;}
+.cssb .l1{display:flex;align-items:baseline;gap:8px;}
+.cssb .sp{flex:1;}
+.cssb .why{font-size:10.5px;letter-spacing:.5px;color:var(--dim);opacity:0;transition:opacity .3s;}
+.badge{font-family:var(--f-m);font-weight:700;font-size:.93em;background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:6px;padding:0 7px;opacity:0;transition:opacity .35s;white-space:nowrap;}
+.badge i{font-style:normal;color:var(--dim2);margin:0 1px;}
+.badge b.z{opacity:.45;}
+.sa{color:var(--pink);}.sb{color:var(--amber);}.sc{color:var(--cyan);}
+.cssb.shown .badge,.cssb.always .badge,.badge.on{opacity:1;}
+.cssb.marked .why{opacity:1;}
+.cssb.marked .rule.win{background:rgba(0,255,157,.08);border-color:rgba(0,255,157,.3);}
+.cssb.marked .rule.win .why{color:var(--green);}
+.cssb.marked .rule.lost .k{text-decoration:line-through;text-decoration-color:var(--red);opacity:.6;}
+.cssb.marked .rule.anc{opacity:.5;}
+.cssb.marked .rule.src{background:rgba(0,255,157,.05);border-color:rgba(0,255,157,.18);border-style:dashed;}
+.cssb.marked .rule.src .why{color:var(--green);}
+.cssb .rule.tog{cursor:pointer;}
+.cssb .rule.tog:hover{border-color:var(--border2);background:rgba(255,255,255,.025);}
+.cssb .tg{display:inline-block;width:11px;height:11px;border-radius:3px;border:1.5px solid var(--cyan);background:var(--cyan);margin-right:9px;vertical-align:-1px;transition:all .2s;box-shadow:0 0 6px rgba(0,212,255,.5);}
+.cssb .rule.off .tg{background:transparent;box-shadow:none;border-color:var(--dim);}
+.cssb .rule.off{opacity:.42;}
+.cssb .rule.off .sel,.cssb .rule.off .dl{text-decoration:line-through;}
+.cssb .rule.ghost{opacity:.6;}
+.cssb .rule.ghost .sel,.cssb .rule.ghost .dl{text-decoration:none;}
+.impchip{display:inline-block;text-decoration:none;font-family:var(--f-m);font-size:.78em;border:1px dashed var(--dim);color:var(--dim);background:transparent;border-radius:6px;padding:1px 8px;margin-left:10px;cursor:pointer;transition:all .2s;}
+.impchip:hover{border-color:var(--red);color:var(--red);}
+.impchip.on{border-style:solid;border-color:var(--red);color:var(--red);background:rgba(255,77,109,.12);font-weight:700;}
+.code.inlwin .t-inl{background:rgba(0,255,157,.12);box-shadow:0 0 0 1px rgba(0,255,157,.4);border-radius:4px;}
+
+.cm{color:var(--dim2);}
+.cssb .rule.extra{display:none;}
+.cssb.xtra .rule.extra{display:block;}
+.cssb.nobadge .badge{display:none;}
+
+/* ── "NAVEGADOR": resultado renderizado de verdade ── */
+.pv{background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--border2);position:relative;text-align:left;box-shadow:0 8px 30px rgba(0,0,0,.45);}
+.pv .bar{height:26px;background:#e6eaf2;display:flex;align-items:center;gap:5px;padding:0 11px;font-family:var(--f-m);font-size:10px;color:#6b7690;letter-spacing:.5px;}
+.pv .bar i{width:8px;height:8px;border-radius:50%;background:#c3cada;}
+.pv .bar span{margin-left:8px;}
+.pv .host{padding:12px 16px;min-height:62px;user-select:none;}
+.pv .ro{background:var(--code);color:var(--soft);font-family:var(--f-m);font-size:12.5px;padding:7px 13px;line-height:1.55;border-top:1px solid var(--border2);}
+.pv .ro b{color:var(--text);font-weight:600;}
+.pv .ro .src{color:var(--green);}
+.pv .ro .k{color:#c4b5fd;}
+.pv .veil{position:absolute;inset:26px 0 0 0;background:repeating-linear-gradient(135deg,#0b0f1c,#0b0f1c 10px,#101727 10px,#101727 20px);display:flex;align-items:center;justify-content:center;font-family:var(--f-d);font-weight:800;font-size:40px;color:var(--amber);transition:opacity .5s;}
+.pv .veil small{font-family:var(--f-m);font-size:11px;font-weight:400;color:var(--dim);letter-spacing:1px;margin-left:12px;}
+.pv.shown .veil,.pv.open .veil{opacity:0;pointer-events:none;}
+
+/* ── ALTERNATIVAS (voto da turma) ── */
+.opts{display:grid;gap:8px;}
+.opts.c2{grid-template-columns:1fr 1fr;}
+.opts.c3{grid-template-columns:repeat(3,1fr);}
+.opts.c5{grid-template-columns:repeat(5,1fr);}
+.opt{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;font-family:var(--f-d);font-size:15.5px;font-weight:600;color:var(--text);text-align:left;display:flex;align-items:center;gap:10px;transition:all .2s;line-height:1.25;}
+.opt:hover{border-color:var(--border2);background:#141d30;}
+.opt .l{font-family:var(--f-m);font-size:12px;font-weight:700;color:var(--dim);border:1px solid var(--border2);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.opt .sw{width:14px;height:14px;border-radius:4px;margin:0;flex-shrink:0;}
+.opt.picked{border-color:var(--cyan);background:rgba(0,212,255,.08);}
+.opt.picked .l{border-color:var(--cyan);color:var(--cyan);}
+.opts.shown .opt.ok{border-color:var(--green);background:rgba(0,255,157,.1);color:var(--green);}
+.opts.shown .opt.ok .l{border-color:var(--green);color:var(--green);}
+.opts.shown .opt.picked:not(.ok){border-color:var(--red);background:rgba(255,77,109,.08);color:var(--red);}
+.opts.shown .opt:not(.ok):not(.picked){opacity:.4;}
+.qlabel{font-family:var(--f-m);font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.qlabel.qn{text-transform:none;letter-spacing:.3px;font-size:13.5px;color:var(--soft);font-family:var(--f-b);font-weight:500;}
+.timer{flex-shrink:0;font-family:var(--f-m);font-size:11.5px;letter-spacing:.5px;background:transparent;border:1px solid var(--border2);color:var(--soft);border-radius:999px;padding:3px 11px;cursor:pointer;transition:all .2s;text-transform:none;}
+.timer:hover{border-color:var(--amber);color:var(--amber);}
+.timer.run{border-color:var(--amber);color:var(--amber);}
+.timer.done{border-color:var(--red);color:var(--red);animation:pulse 1s 3;}
+.btn{font-family:var(--f-m);font-size:12.5px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.35);color:var(--cyan);border-radius:9px;padding:8px 14px;cursor:pointer;transition:all .2s;}
+.btn:hover{background:rgba(0,212,255,.16);}
+.btn.a{background:rgba(255,184,0,.08);border-color:rgba(255,184,0,.4);color:var(--amber);}
+.btn.a:hover{background:rgba(255,184,0,.16);}
+.btn.on{background:rgba(224,135,98,.16);border-color:var(--coral);color:var(--coral);}
+.bigq{font-family:var(--f-d);font-weight:800;font-size:54px;letter-spacing:-1.5px;line-height:1.05;}
+.answer{font-family:var(--f-d);font-weight:700;font-size:19px;line-height:1.35;color:var(--text);}
+
+/* ══════════ SLIDES ESPECÍFICOS ══════════ */
+/* S1 */
+#s1 .orbit{position:absolute;border-radius:50%;border:1px solid;animation:spin 22s linear infinite;pointer-events:none;top:50%;left:50%;transform:translate(-50%,-50%);}
+#s1 .o1{width:600px;height:600px;border-color:rgba(244,114,182,.07);}
+#s1 .o2{width:420px;height:420px;border-color:rgba(255,184,0,.08);animation-duration:15s;animation-direction:reverse;}
+#s1 .o3{width:250px;height:250px;border-color:rgba(0,212,255,.1);animation-duration:9s;}
+#s1 .chipf{position:absolute;font-family:var(--f-m);font-weight:700;font-size:15px;padding:5px 12px;border-radius:9px;background:var(--s1);border:1px solid var(--border2);}
+.aula-badge{display:inline-flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;margin-top:26px;}
+.dot-v{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+
+/* S3 mapa */
+.path{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.pstep{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:14px 14px 13px;position:relative;}
+.pstep .n{font-family:var(--f-m);font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:8px;}
+.pstep .q{font-size:14px;color:var(--soft);line-height:1.4;min-height:60px;font-style:italic;}
+.pstep .k{font-family:var(--f-d);font-weight:800;font-size:14px;letter-spacing:-.2px;margin-top:8px;}
+.pstep:not(:last-child)::after{content:'→';position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--dim);font-family:var(--f-m);font-size:13px;z-index:2;}
+
+/* S4 anatomia */
+.anat{font-family:var(--f-m);font-size:30px;line-height:1.75;white-space:pre;background:var(--code);border:1px solid var(--border);border-radius:14px;padding:22px 30px;}
+.anat .u{border-bottom:2px dashed;padding-bottom:2px;}
+.legend{display:flex;flex-direction:column;gap:9px;}
+.lg{display:flex;gap:12px;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 14px;}
+.lg .k{font-family:var(--f-m);font-weight:700;font-size:14px;width:118px;flex-shrink:0;}
+.lg .d{font-size:14px;color:var(--soft);line-height:1.4;}
+
+/* S5 conflito */
+.vs3{display:flex;align-items:center;gap:16px;justify-content:center;}
+.shooters{display:flex;flex-direction:column;gap:9px;}
+.shoot{display:flex;align-items:center;gap:12px;}
+.shoot .code{min-width:300px;}
+.shoot .arr{font-family:var(--f-m);color:var(--dim);font-size:20px;}
+.target{background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:18px 20px;text-align:center;box-shadow:0 0 40px rgba(0,212,255,.08);}
+
+/* S7 árvore */
+.tree{display:flex;flex-direction:column;gap:9px;}
+.tnode{display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:9px 13px;cursor:pointer;transition:all .25s;position:relative;}
+.tnode:hover{border-color:var(--cyan);}
+.tnode .tagn{font-family:var(--f-m);font-weight:700;font-size:16px;color:var(--cyan);width:76px;}
+.tnode .st{font-family:var(--f-m);font-size:12.5px;flex:1;color:var(--soft);}
+.tnode .st b{color:var(--text);}
+.tnode .smp{background:#fff;border-radius:7px;padding:3px 12px;font-weight:600;font-size:16px;font-family:var(--f-b);transition:color .4s;}
+.tnode.decl{border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.05);}
+.tnode.inh .st{color:var(--green);}
+.tnode .elbow{position:absolute;left:-19px;top:-10px;width:14px;height:32px;border-left:1.5px solid var(--border2);border-bottom:1.5px solid var(--border2);border-bottom-left-radius:7px;}
+.tnode.inh .elbow{border-color:var(--green);}
+
+/* S9 listas */
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chips .tag{font-size:14px;padding:5px 11px;}
+.chips.s .tag{font-size:11.5px;padding:3px 8px;}
+
+/* S10 palavras-chave */
+.kws{display:flex;flex-direction:column;gap:8px;}
+.kw{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:10px 14px;cursor:pointer;transition:all .2s;text-align:left;}
+.kw:hover{border-color:var(--border2);}
+.kw .n{font-family:var(--f-m);font-weight:700;font-size:17px;color:var(--text);}
+.kw .s{font-size:12.5px;color:var(--dim);line-height:1.35;margin-top:2px;font-family:var(--f-b);}
+.kw.sel{border-color:var(--green);background:rgba(0,255,157,.07);}
+.kw.sel .n{color:var(--green);}
+.kwx h3{font-size:15px;}
+.kwx .lb{font-family:var(--f-m);font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin:9px 0 3px;}
+.kwx .lb:first-child{margin-top:0;}
+.kwx p{font-size:14px;line-height:1.5;}
+
+/* S13 escada */
+.ladder{display:flex;flex-direction:column;gap:7px;align-items:center;}
+.rung{display:flex;align-items:center;gap:14px;border-radius:11px;padding:9px 16px;border:1px solid;background:var(--s1);}
+.rung .nm{font-family:var(--f-d);font-weight:700;font-size:16px;flex:1;}
+.rung .ex{font-family:var(--f-m);font-size:13px;color:var(--soft);}
+.rung.r1{width:52%;border-color:rgba(255,77,109,.5);border-style:dashed;}
+.rung.r2{width:62%;border-color:rgba(224,135,98,.45);}
+.rung.r3{width:74%;border-color:rgba(244,114,182,.45);}
+.rung.r4{width:87%;border-color:rgba(255,184,0,.4);}
+.rung.r5{width:100%;border-color:rgba(0,212,255,.4);}
+.ldown{font-family:var(--f-m);font-size:11px;color:var(--dim2);line-height:1;}
+
+/* S14 placar */
+.abc{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.abcc{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px 18px;text-align:center;position:relative;overflow:hidden;}
+.abcc .L{font-family:var(--f-d);font-weight:800;font-size:68px;line-height:1;}
+.abcc h3{margin-top:6px;font-size:16px;}
+.abcc .ex{font-family:var(--f-m);font-size:14px;margin-top:8px;line-height:1.7;}
+.abcc.a{border-color:rgba(244,114,182,.4);}.abcc.b{border-color:rgba(255,184,0,.38);}.abcc.c{border-color:rgba(0,212,255,.38);}
+
+/* S15 calculadora */
+.presets{display:flex;flex-direction:column;gap:7px;}
+.preset{font-family:var(--f-m);font-size:15px;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;color:var(--soft);text-align:left;transition:all .2s;}
+.preset:hover{border-color:var(--border2);color:var(--text);}
+.preset.sel{border-color:var(--cyan);color:var(--text);background:rgba(0,212,255,.07);}
+.calc-in{font-family:var(--f-m);font-size:14px;background:var(--code);border:1px dashed var(--border2);border-radius:9px;padding:8px 13px;color:var(--text);width:100%;outline:none;}
+.calc-in:focus{border-color:var(--cyan);border-style:solid;}
+.calc-in::placeholder{color:var(--dim2);}
+.seldisp{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:4px;min-height:92px;padding-top:6px;}
+.stok{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.stok .t{font-family:var(--f-m);font-weight:700;font-size:34px;color:var(--text);white-space:pre;transition:color .35s;line-height:1.1;}
+.stok .g{font-family:var(--f-m);font-size:10.5px;letter-spacing:.5px;padding:2px 7px;border-radius:5px;border:1px solid;opacity:0;transition:opacity .35s;white-space:nowrap;}
+.seldisp.rv .stok .g{opacity:1;}
+.seldisp:not(.rv) .stok .t{color:var(--text)!important;}
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.sbox{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:10px 10px 11px;text-align:center;}
+.sbox .v{font-family:var(--f-m);font-weight:700;font-size:58px;line-height:1.1;transition:color .3s;}
+.sbox .c{font-family:var(--f-m);font-size:10.5px;color:var(--dim);letter-spacing:.5px;line-height:1.4;}
+
+/* S16 rodadas */
+.rtabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+.rtab{font-family:var(--f-m);font-size:12px;border:1px solid var(--border);background:var(--s2);color:var(--dim);border-radius:8px;padding:6px 14px;cursor:pointer;transition:all .2s;}
+.rtab.on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.07);}
+.rounds{position:relative;width:100%;max-width:1152px;height:392px;}
+.round{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .35s;display:flex;gap:18px;}
+.round.on{opacity:1;visibility:visible;}
+
+/* S20 bônus */
+.spc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:12px 15px;display:flex;flex-direction:column;gap:6px;}
+.spc .top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--f-m);font-size:16px;font-weight:600;}
+.spc p{font-size:13.5px;line-height:1.45;}
+
+/* S23 ligas */
+.lanes{display:flex;flex-direction:column;gap:8px;}
+.lane{border-radius:11px;padding:10px 14px;border:1px solid;}
+.lane .h{font-family:var(--f-m);font-size:10.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.lane p{font-size:13.5px;line-height:1.45;}
+
+/* S24 guerra */
+.war{display:flex;flex-direction:column;gap:7px;}
+.wstep{display:flex;gap:12px;align-items:center;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:8px 13px;}
+.wstep .n{width:25px;height:25px;border-radius:50%;background:rgba(255,77,109,.14);border:1px solid rgba(255,77,109,.4);display:flex;align-items:center;justify-content:center;font-family:var(--f-m);font-size:11px;font-weight:700;color:var(--red);flex-shrink:0;}
+.wstep .c{font-family:var(--f-m);font-size:12.5px;color:var(--soft);white-space:pre;}
+.wstep .d{font-size:12.5px;color:var(--dim);line-height:1.35;margin-top:2px;}
+.vd-list{list-style:none;}
+.vd-list li{font-size:14px;color:var(--soft);line-height:1.5;margin-bottom:7px;padding-left:24px;position:relative;}
+.vd-list li::before{position:absolute;left:0;top:0;font-family:var(--f-m);font-size:13px;color:var(--green);content:attr(data-n);}
+
+/* S25 mapa completo */
+.flow{display:flex;gap:14px;align-items:stretch;}
+.fq{font-family:var(--f-d);font-weight:700;font-size:17px;background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:13px 14px;text-align:center;line-height:1.3;}
+.fpanel{border-radius:14px;padding:15px 16px;border:1px solid;display:flex;flex-direction:column;gap:11px;}
+.fpanel .ph{font-family:var(--f-m);font-size:11px;letter-spacing:2px;text-transform:uppercase;}
+.chain{display:flex;align-items:stretch;gap:6px;}
+.lk{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:11px 9px 12px;text-align:center;}
+.lk .n{font-family:var(--f-m);font-size:11.5px;color:var(--dim);}
+.lk .t{font-family:var(--f-d);font-weight:700;font-size:17px;line-height:1.2;margin-top:3px;}
+.lk .d{font-size:13px;color:var(--soft);line-height:1.3;margin-top:4px;}
+.chain .ar{display:flex;align-items:center;color:var(--dim);font-family:var(--f-m);font-size:13px;}
+
+/* S27 passos de resolução */
+.rsteps{display:flex;flex-direction:column;gap:8px;}
+.rs{display:flex;gap:12px;align-items:flex-start;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;}
+.rs .n{width:25px;height:25px;border-radius:50%;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.4);display:flex;align-items:center;justify-content:center;font-family:var(--f-m);font-size:11px;font-weight:700;color:var(--cyan);flex-shrink:0;margin-top:1px;}
+.rs .t{font-family:var(--f-d);font-size:14.5px;font-weight:700;margin-bottom:1px;color:var(--text);}
+.rs .d{font-size:13.5px;color:var(--soft);line-height:1.45;}
+.rs.fin{border-color:rgba(0,255,157,.35);background:rgba(0,255,157,.06);}
+.rs.fin .n{background:rgba(0,255,157,.14);border-color:rgba(0,255,157,.45);color:var(--green);}
+
+/* S29 checklist */
+.chk{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
+.ck{display:flex;gap:13px;align-items:center;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:9px 14px;}
+.ck .n{font-family:var(--f-m);font-weight:700;font-size:26px;width:30px;text-align:center;flex-shrink:0;line-height:1;}
+.ck .q{font-family:var(--f-d);font-weight:700;font-size:16px;line-height:1.25;}
+.ck .h{font-size:12.5px;color:var(--dim);line-height:1.35;margin-top:2px;}
+.ck.dev{border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.05);}
+
+/* S31 pegadinhas */
+.myths{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;width:100%;max-width:1152px;}
+.myth{height:276px;perspective:1000px;cursor:pointer;}
+.myth .in{position:relative;width:100%;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d;}
+.myth.shown .in,.myth.flip .in{transform:rotateY(180deg);}
+.myth .f,.myth .b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:16px 15px;display:flex;flex-direction:column;border:1px solid var(--border);background:var(--s1);}
+.myth .f .n{font-family:var(--f-m);font-size:10.5px;letter-spacing:2px;color:var(--amber);}
+.myth .f .q{font-family:var(--f-d);font-weight:700;font-size:18.5px;line-height:1.3;margin:auto 0;}
+.myth .f .tap{font-family:var(--f-m);font-size:10.5px;color:var(--dim2);}
+.myth .b{transform:rotateY(180deg);border-color:rgba(255,77,109,.4);background:linear-gradient(180deg,rgba(255,77,109,.08),var(--s1) 60%);}
+.myth .b .v{font-family:var(--f-d);font-weight:800;font-size:22px;color:var(--red);letter-spacing:-.5px;line-height:1.05;}
+.myth .b.m{border-color:rgba(255,184,0,.4);background:linear-gradient(180deg,rgba(255,184,0,.08),var(--s1) 60%);}
+.myth .b.m .v{color:var(--amber);}
+.myth .b p{font-size:13.5px;line-height:1.5;margin-top:10px;}
+.myth .b .ex{font-family:var(--f-m);font-size:11.5px;color:var(--soft);background:var(--code);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-top:auto;line-height:1.55;}
+
+/* S32 síntese */
+.syn{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:1152px;}
+.sy{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:11px 14px;position:relative;overflow:hidden;}
+.sy::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--cl);opacity:.8;}
+.sy .k{font-family:var(--f-m);font-weight:700;font-size:15px;color:var(--cl);}
+.sy .d{font-size:13px;color:var(--soft);line-height:1.4;margin-top:4px;}
+
+/* S33–35 fecho */
+.qchips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:980px;}
+.qchip{background:var(--s1);border:1px solid var(--border);border-radius:999px;padding:9px 18px;font-size:15px;color:var(--soft);}
+.qr{width:300px;height:300px;border-radius:16px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--s1);font-family:var(--f-m);font-size:12px;color:var(--dim);text-align:center;line-height:1.5;padding:14px;}
+.qr.has{border:0;background:#fff;padding:20px;}
+.qr svg,.qr img{width:100%;height:100%;display:block;}
+.qlink{font-family:var(--f-m);font-size:15px;color:var(--cyan);border:1px dashed var(--border2);border-radius:9px;padding:8px 16px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:text;-webkit-user-select:text;}
+.qlink.has{border-style:solid;border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.06);}
+.qedit{display:flex;gap:8px;align-items:center;}
+.qedit input{font-family:var(--f-m);font-size:12.5px;background:var(--code);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;color:var(--text);width:330px;outline:none;}
+.qedit input:focus{border-color:var(--cyan);}
+.glow{position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,.07),transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div><div class="scan-line"></div>
+<div id="prog"><div id="prog-fill" style="width:0%"></div></div>
+<div id="stage">
+<div id="rail"></div>
+<div id="wrap">
+
+<!-- ═══════════ S1 — TÍTULO ═══════════ -->
+<div class="slide on" id="s1">
+  <div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div>
+  <div class="chipf float-in fi3" style="left:150px;top:112px;"><span class="sa">0</span><span class="dim">-</span><span class="sb">0</span><span class="dim">-</span><span class="sc">1</span></div>
+  <div class="chipf float-in fi4" style="right:170px;top:136px;"><span class="sa">0</span><span class="dim">-</span><span class="sb">1</span><span class="dim">-</span><span class="sc">0</span></div>
+  <div class="chipf float-in fi4" style="left:230px;bottom:112px;"><span class="sa">1</span><span class="dim">-</span><span class="sb">0</span><span class="dim">-</span><span class="sc">0</span></div>
+  <span class="label float-in fi1">Desenvolvimento Web · CSS · Aula interativa</span>
+  <h1 class="float-in fi2">
+    <span class="pink" style="text-shadow:0 0 40px rgba(244,114,182,.35);">ESPECIFICIDADE</span><br>
+    <span class="dim" style="font-size:.5em;vertical-align:middle;">&amp;</span> <span class="green">HERANÇA</span><br>
+    <span>EM CSS<span class="cursor-v"></span></span>
+  </h1>
+  <p class="float-in fi3" style="text-align:center;margin-top:18px;font-size:17px;max-width:700px;">
+    Três regras disputam o mesmo elemento e só uma vence. Hoje vocês descobrem <strong>qual — e por quê</strong>.
+  </p>
+  <div class="aula-badge float-in fi4">
+    <div class="dot-v"></div>
+    <span class="mono" style="font-size:12.5px;color:var(--soft)">O problema · Herança · Especificidade · Cascata · Debugging · Quiz</span>
+  </div>
+  <aside class="nt"><ul>
+    <li>Navegação: → ou espaço avança (primeiro revela os passos do slide, depois troca de slide). ← volta.</li>
+    <li>Tecla N abre estas notas. Tecla F coloca em tela cheia.</li>
+    <li>Não explique nada ainda: o próximo slide já é um problema para a turma.</li>
+    <li>Os números flutuando (0-0-1…) são o "placar" que eles vão aprender a ler.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S2 — O PROBLEMA ═══════════ -->
+<div class="slide" id="s2">
+  <span class="label">Aquecimento · antes de qualquer teoria</span>
+  <h2>Três regras, um parágrafo. <span class="cyan">Qual cor aparece na tela?</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.1;">
+      <div class="code" data-html="open"></div>
+      <div class="code cssb" data-css="open"></div>
+    </div>
+    <div class="col">
+      <div class="qlabel"><span>Voto da turma</span><button class="timer" data-s="15">⏱ 0:15</button></div>
+      <div class="opts c3" data-step="1">
+        <button class="opt"><i class="sw" style="background:blue"></i>blue</button>
+        <button class="opt"><i class="sw" style="background:green"></i>green</button>
+        <button class="opt ok"><i class="sw" style="background:red"></i>red</button>
+      </div>
+      <div class="pv" data-pv="open" data-step="1"></div>
+      <div class="step" data-step="2" style="text-align:center;margin-top:4px;">
+        <div class="bigq amber" style="font-size:42px;">Mas por quê?</div>
+        <p style="margin:8px 0 10px;">"Porque é a última regra"? Então mudem a ordem e vejam:</p>
+        <button class="btn a" data-act="shuffle:open">⇅ Embaralhar a ordem das regras</button>
+      </div>
+    </div>
+  </div>
+  <div class="cue">Deixe a turma votar (clique na opção mais votada) antes de revelar.</div>
+  <aside class="nt"><ul>
+    <li>Leia o HTML em voz alta: o mesmo &lt;p&gt; é parágrafo, tem a classe aviso e o id mensagem. As três regras servem nele.</li>
+    <li>Peça mãos levantadas para cada cor. Clique na mais votada e só então avance (→) para revelar.</li>
+    <li>No "Mas por quê?", embaralhe a ordem 2 ou 3 vezes: continua vermelho. O CSS não aplica simplesmente a última regra.</li>
+    <li>Não dê a explicação agora. Diga: "a gente volta nesse exemplo daqui a 15 minutos".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S3 — MAPA DA AULA ═══════════ -->
+<div class="slide" id="s3">
+  <span class="label">A pergunta da aula</span>
+  <h2>"Qual estilo vai vencer — <span class="amber">e por quê?</span>"</h2>
+  <p class="reveal center" style="max-width:820px;margin-bottom:18px;">O navegador nunca escolhe no chute. Ele segue sempre o mesmo raciocínio — e a aula de hoje é esse raciocínio, uma pergunta de cada vez.</p>
+  <div class="path w">
+    <div class="pstep reveal"><div class="n">01</div><div class="q">"Por que essa cor apareceu, se eu não pedi?"</div><div class="k green">HERANÇA</div></div>
+    <div class="pstep reveal"><div class="n">02</div><div class="q">"Mas existem várias regras para o mesmo elemento…"</div><div class="k amber">ESPECIFICIDADE</div></div>
+    <div class="pstep reveal"><div class="n">03</div><div class="q">"E se elas empatarem?"</div><div class="k violet">ORDEM · CASCATA</div></div>
+    <div class="pstep reveal"><div class="n">04</div><div class="q">"E se eu usar !important?"</div><div class="k red">PRIORIDADE</div></div>
+    <div class="pstep reveal"><div class="n">05</div><div class="q">"Então eu consigo descobrir sozinho?"</div><div class="k cyan">DEBUGGING</div></div>
+  </div>
+  <div class="note reveal">
+    <strong class="cyan">Como vai funcionar:</strong> no caminho tem vários desafios — eles são para <strong>errar à vontade</strong> e discutir. No final: síntese, dúvidas e o <strong>quiz no Microsoft Forms</strong>, que é a avaliação.
+  </div>
+  <aside class="nt"><ul>
+    <li>Slide rápido (30 s): só mostre que a aula é uma sequência de perguntas, não de definições.</li>
+    <li>Reforce: os exercícios do meio não valem nota; o Forms no final vale.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S4 — ANATOMIA DA REGRA ═══════════ -->
+<div class="slide" id="s4">
+  <span class="label">Revisão relâmpago · 1 de 2</span>
+  <h2>A anatomia de uma <span class="cyan">regra CSS</span></h2>
+  <div class="row" style="align-items:center;">
+    <div class="col" style="flex:1.05;">
+      <div class="anat reveal"><span class="u cyan">seletor</span> <span class="p">{</span>
+    <span class="u t-prop">propriedade</span><span class="p">:</span> <span class="u tx">valor</span><span class="p">;</span>
+<span class="p">}</span></div>
+      <div class="reveal" style="display:flex;gap:12px;align-items:stretch;">
+        <div class="code" data-css="anat" style="flex:1;"></div>
+        <div class="pv open" data-pv="anat" style="flex:1.25;"></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="legend">
+        <div class="lg reveal"><span class="k cyan">seletor</span><span class="d"><strong>Quem</strong> recebe o estilo.</span></div>
+        <div class="lg reveal"><span class="k t-prop">propriedade</span><span class="d"><strong>O que</strong> vai mudar (cor, fonte, margem…).</span></div>
+        <div class="lg reveal"><span class="k tx">valor</span><span class="d"><strong>Como</strong> vai ficar.</span></div>
+        <div class="lg reveal"><span class="k amber">declaração</span><span class="d">Um par <code>propriedade: valor;</code></span></div>
+        <div class="lg reveal"><span class="k violet">regra</span><span class="d">O conjunto: seletor + declarações entre chaves.</span></div>
+      </div>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Revisão de 1 minuto. Pergunte: "na regra de baixo, quem é o seletor? e o valor?"</li>
+    <li>Mostre no resultado: o &lt;span&gt; não mudou porque o seletor p não o seleciona.</li>
+    <li>Guarde a palavra "seletor": a especificidade é uma medida da força dele.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S5 — CONFLITO E CASCATA ═══════════ -->
+<div class="slide" id="s5">
+  <span class="label">Revisão relâmpago · 2 de 2</span>
+  <h2>Um elemento pode ser alvo de <span class="red">várias regras ao mesmo tempo</span></h2>
+  <div class="vs3 w reveal">
+    <div class="shooters">
+      <div class="shoot"><div class="code" data-hl="css">p { color: blue; }</div><span class="arr">→</span></div>
+      <div class="shoot"><div class="code" data-hl="css">.aviso { color: green; }</div><span class="arr">→</span></div>
+      <div class="shoot"><div class="code" data-hl="css">#mensagem { color: red; }</div><span class="arr">→</span></div>
+    </div>
+    <div class="target">
+      <div class="code" data-hl="html" style="border-color:var(--border2);">&lt;p id="mensagem" class="aviso"&gt;Olá!&lt;/p&gt;</div>
+      <p style="margin-top:11px;font-size:14px;">3 regras · a mesma propriedade · <strong class="red">3 valores diferentes</strong></p>
+    </div>
+  </div>
+  <div class="grid-2 w" style="margin-top:16px;">
+    <div class="card c-violet reveal">
+      <h3 class="violet">Isso é um conflito. Quem resolve é a cascata.</h3>
+      <p>Cascata é o processo que o navegador segue para escolher <strong>um único valor final</strong> para cada propriedade de cada elemento.</p>
+    </div>
+    <div class="card c-cyan reveal">
+      <h3 class="cyan">De onde um valor pode vir?</h3>
+      <p style="margin-bottom:8px;">Só existem três possibilidades — vamos abrir uma por uma:</p>
+      <span class="tag tag-amber">① uma regra que mira o elemento</span> <span class="tag tag-green">② herança</span> <span class="tag tag-dim">③ valor inicial</span>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>É o mesmo exemplo da abertura, agora com nome: conflito.</li>
+    <li>Não aprofunde a cascata aqui — só plante a ideia de que existe um processo de decisão.</li>
+    <li>Gancho: "vamos começar pelo caso mais simples: quando nenhuma regra mira o elemento".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S6 — HERANÇA: A SITUAÇÃO ═══════════ -->
+<div class="slide" id="s6">
+  <span class="label" style="color:var(--green)">Bloco 2 · Herança</span>
+  <h2>Ninguém mandou esse texto ficar azul. <span class="green">Ou mandou?</span></h2>
+  <div class="row">
+    <div class="col">
+      <div class="code" data-html="inh1"></div>
+      <div class="code cssb nobadge" data-css="inh1" data-step="2"></div>
+      <div class="pv open" data-pv="inh1"></div>
+    </div>
+    <div class="col" style="justify-content:center;gap:16px;">
+      <div class="card c-cyan">
+        <p class="qlabel" style="margin-bottom:6px;">Pergunta 1</p>
+        <div class="answer">Eu defini <code class="t-prop">color</code> no <code class="cyan">&lt;p&gt;</code>?</div>
+        <div class="step" data-step="1" style="margin-top:8px;"><span class="bigq red" style="font-size:38px;">Não.</span> <span class="soft" style="font-size:14.5px;margin-left:8px;">Nenhuma regra seleciona o &lt;p&gt;.</span></div>
+      </div>
+      <div class="card c-green">
+        <p class="qlabel" style="margin-bottom:6px;">Pergunta 2</p>
+        <div class="answer">Então por que o texto ficou azul?</div>
+        <div class="step" data-step="2" style="margin-top:10px;">
+          <p style="font-size:15.5px;color:var(--text);margin-bottom:10px;">Porque o &lt;p&gt; <strong class="green">herdou</strong> o valor de <code>color</code> do elemento pai.</p>
+          <span class="tag tag-green">pai</span> <span class="dim mono">→</span> <span class="tag tag-green">filho</span> <span class="dim mono">→</span> <span class="tag tag-green">descendente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cue">Faça as duas perguntas em voz alta e espere a resposta antes de cada →.</div>
+  <aside class="nt"><ul>
+    <li>Pergunta 1: deixe a turma procurar no CSS uma regra para o &lt;p&gt;. Não existe.</li>
+    <li>Pergunta 2: aceite respostas como "pegou do pai", "puxou da div" — e só então dê o nome: herança.</li>
+    <li>Ao revelar, o CSS marca .pai como origem e a faixa escura do navegador mostra "herdado de .pai".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S7 — O QUE É HERANÇA ═══════════ -->
+<div class="slide" id="s7">
+  <span class="label" style="color:var(--green)">Conceito · Herança</span>
+  <h2>Herança: o valor <span class="green">desce pela árvore</span></h2>
+  <div class="row" style="align-items:center;">
+    <div class="col" style="flex:.95;">
+      <div class="card c-green reveal">
+        <p style="font-size:16.5px;line-height:1.6;color:var(--text);">Herança é o mecanismo pelo qual <strong class="green">determinados valores</strong> de propriedades CSS passam de um elemento ancestral para seus descendentes — quando <strong class="green">nenhuma regra específica</strong> sobrescreve aquele valor.</p>
+      </div>
+      <div class="lg reveal"><span class="k green" style="width:auto;">↓</span><span class="d">Sempre de cima para baixo: o filho nunca passa valor para o pai.</span></div>
+      <div class="lg reveal"><span class="k green" style="width:auto;">↓</span><span class="d">Quem tem valor próprio usa o seu — e passa <strong>esse</strong> adiante.</span></div>
+    </div>
+    <div class="col" style="flex:1.05;">
+      <p class="qlabel"><span>Clique em um elemento para declarar <span class="t-prop" style="text-transform:none;letter-spacing:0;">color</span> nele</span><button class="btn" style="padding:3px 10px;font-size:11px;" data-act="tree">reiniciar</button></p>
+      <div class="tree" id="tree"></div>
+    </div>
+  </div>
+  <div class="cue">Clique no &lt;p&gt; e pergunte: "o que acontece com o span? e com a div?"</div>
+  <aside class="nt"><ul>
+    <li>Estado inicial: só o body declara color. Todos abaixo herdam (linha verde).</li>
+    <li>Clique no &lt;p&gt;: ele ganha cor própria; o span passa a herdar do p; a div continua herdando do body.</li>
+    <li>Clique de novo no mesmo elemento para trocar a cor ou remover a declaração.</li>
+    <li>Frase para fixar: "o filho herda do ancestral mais próximo que tem um valor".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S8 — EXPERIMENTO ═══════════ -->
+<div class="slide" id="s8">
+  <span class="label" style="color:var(--green)">Mini experimento · façam a aposta</span>
+  <h2>O pai tem cor <span class="dim">e</span> borda. <span class="green">O que chega no filho?</span></h2>
+  <div class="row">
+    <div class="col">
+      <div class="code" data-html="exp"></div>
+      <div class="code cssb" data-css="exp" data-extra="2"></div>
+    </div>
+    <div class="col">
+      <div class="qlabel qn"><span>O <code class="cyan">&lt;p&gt;</code> ficará roxo?</span><button class="timer" data-s="15">⏱ 0:15</button></div>
+      <div class="opts c2" data-step="1"><button class="opt ok">Sim</button><button class="opt">Não</button></div>
+      <div class="qlabel qn"><span>O <code class="cyan">&lt;p&gt;</code> receberá a borda?</span></div>
+      <div class="opts c2" data-step="1"><button class="opt">Sim</button><button class="opt ok">Não</button></div>
+      <div class="pv" data-pv="exp" data-step="1"></div>
+      <div class="step" data-step="1" style="display:flex;gap:10px;justify-content:center;">
+        <span class="tag tag-green" style="font-size:14px;padding:5px 12px;">color → HERDA</span>
+        <span class="tag tag-red" style="font-size:14px;padding:5px 12px;">border → NÃO HERDA</span>
+      </div>
+    </div>
+  </div>
+  <div class="note g step" data-step="2"><strong class="green">E se a borda herdasse?</strong> Clique na regra <code>p { border: inherit; }</code> ali no CSS para forçar. Cada filho ganharia a própria caixa — por isso <code>border</code> não herda por padrão.</div>
+  <div class="cue">Duas apostas, uma revelação. Clique nas respostas da turma antes do →.</div>
+  <aside class="nt"><ul>
+    <li>Há uma única borda na tela, em volta da div. O parágrafo dentro dela está roxo, mas sem borda própria.</li>
+    <li>No passo 2, ligue a regra p { border: inherit; }: aparece uma segunda borda. Desligue de novo.</li>
+    <li>Conclusão: a herança depende da propriedade. É a ponte para o próximo slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S9 — HERDADAS × NÃO HERDADAS ═══════════ -->
+<div class="slide" id="s9">
+  <span class="label" style="color:var(--green)">Regra prática</span>
+  <h2><span class="green">Texto</span> costuma herdar. <span class="red">Caixa</span>, não.</h2>
+  <div class="grid-2 w">
+    <div class="card c-green reveal">
+      <h3 class="green">Geralmente herdadas</h3>
+      <p style="margin-bottom:11px;">Propriedades de <strong>texto</strong>: faz sentido o conteúdo inteiro seguir o mesmo estilo.</p>
+      <div class="chips"><span class="tag tag-green">color</span><span class="tag tag-green">font-family</span><span class="tag tag-green">font-size</span><span class="tag tag-green">font-weight</span><span class="tag tag-green">line-height</span></div>
+      <div class="chips s" style="margin-top:9px;"><span class="tag tag-dim">text-align</span><span class="tag tag-dim">letter-spacing</span><span class="tag tag-dim">list-style</span><span class="tag tag-dim">visibility</span><span class="tag tag-dim">cursor</span></div>
+    </div>
+    <div class="card c-red reveal">
+      <h3 class="red">Geralmente não herdadas</h3>
+      <p style="margin-bottom:11px;">Propriedades da <strong>caixa</strong> e do layout: cada elemento tem a sua.</p>
+      <div class="chips"><span class="tag tag-red">margin</span><span class="tag tag-red">padding</span><span class="tag tag-red">border</span><span class="tag tag-red">width</span><span class="tag tag-red">height</span><span class="tag tag-red">background</span></div>
+      <p style="margin-top:9px;font-size:13px;color:var(--dim);">Não herdou e ninguém definiu? Vale o <strong class="soft">valor inicial</strong> da propriedade: <code>margin: 0</code>, <code>border: none</code>…</p>
+    </div>
+  </div>
+  <div class="note a reveal"><strong class="amber">A herança depende da propriedade.</strong> CSS não significa que tudo passa do pai para o filho — e a lista não é para decorar: na dúvida, teste ou consulte a documentação.</div>
+  <div class="note reveal" style="margin-top:9px;"><strong class="cyan">"Mas o fundo do filho fica igual ao do pai!"</strong> Parece herança, mas não é: o <code>background</code> inicial do filho é <strong>transparente</strong>, então o fundo do pai aparece através dele.</div>
+  <aside class="nt"><ul>
+    <li>Não leia as listas inteiras. Mostre o padrão: texto de um lado, caixa do outro.</li>
+    <li>As etiquetas cinzas são "e também" — só para mostrar que a lista é maior.</li>
+    <li>O caso do background costuma gerar dúvida real: vale 20 segundos.</li>
+    <li>"Valor inicial" reaparece no próximo slide como a palavra-chave initial.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S10 — INHERIT / INITIAL / UNSET / REVERT ═══════════ -->
+<div class="slide" id="s10">
+  <span class="label" style="color:var(--green)">Controle explícito · você decide</span>
+  <h2>Quatro palavras para <span class="green">mandar na herança</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.12;">
+      <div class="code sm" data-html="kw"></div>
+      <div class="code sm cssb" data-css="kw"></div>
+    </div>
+    <div class="col" style="flex:none;width:232px;">
+      <p class="qlabel"><span>O que colocar no <span class="amber" style="text-transform:none;letter-spacing:0;">?</span></span></p>
+      <div class="kws" id="kws"></div>
+    </div>
+    <div class="col" style="flex:1.05;">
+      <div class="pv open" data-pv="kw"></div>
+      <div class="card c-green kwx" id="kwx" style="flex:1;"></div>
+    </div>
+  </div>
+  <div class="cue">Mesma situação, quatro respostas. Clique em cada palavra e peça para preverem o link.</div>
+  <aside class="nt"><ul>
+    <li>Situação: o site pinta todo link de vermelho-carmim com borda. Dentro do card verde tracejado, queremos outro comportamento.</li>
+    <li>inherit: copia do pai — até a borda, que normalmente não herda.</li>
+    <li>initial: valor "de fábrica" da especificação (color preto, sem borda). Não é o padrão do navegador.</li>
+    <li>unset: age como inherit em color (herdável) e como initial em border (não herdável).</li>
+    <li>revert: desfaz o CSS do site e devolve o link azul padrão do navegador.</li>
+    <li>Clique de novo na palavra selecionada para voltar ao estado sem regra.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S11 — CHECKPOINT HERANÇA ═══════════ -->
+<div class="slide" id="s11">
+  <span class="label" style="color:var(--amber)">Checkpoint 1 · Herança</span>
+  <h2>O que o <span class="cyan">&lt;span&gt;</span> recebe do pai?</h2>
+  <div class="row">
+    <div class="col" style="flex:.9;">
+      <div class="code" data-html="chk"></div>
+      <div class="code cssb" data-css="chk"></div>
+    </div>
+    <div class="col" style="flex:1.1;">
+      <div class="qlabel"><span>Escolham uma alternativa</span><button class="timer" data-s="20">⏱ 0:20</button></div>
+      <div class="opts c2" data-step="1">
+        <button class="opt"><span class="l">A</span>Tudo: cor, negrito, padding e borda</button>
+        <button class="opt ok"><span class="l">B</span>Só a cor e o negrito</button>
+        <button class="opt"><span class="l">C</span>Só o padding e a borda</button>
+        <button class="opt"><span class="l">D</span>Nada: o span não tem regra</button>
+      </div>
+      <div class="pv" data-pv="chk" data-step="1"></div>
+      <div class="note g step" data-step="1" style="margin-top:0;"><strong class="green">B.</strong> <code>color</code> e <code>font-weight</code> são propriedades de texto: descem. <code>padding</code> e <code>border</code> são da caixa: ficam só no <code>.card</code>.</div>
+    </div>
+  </div>
+  <div class="cue">Peça que justifiquem a escolha antes de revelar.</div>
+  <aside class="nt"><ul>
+    <li>Primeiro momento de quiz. 20 segundos, voto por letra, clique na mais votada.</li>
+    <li>Na revelação, a faixa escura lista os valores reais calculados pelo navegador para o span.</li>
+    <li>Se alguém marcou A: volte ao experimento da borda. Se marcou D: lembre que herança não precisa de regra no filho.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S12 — TRANSIÇÃO PARA ESPECIFICIDADE ═══════════ -->
+<div class="slide" id="s12">
+  <div class="glow" style="background:radial-gradient(circle,rgba(255,184,0,.06),transparent 70%);"></div>
+  <span class="label" style="color:var(--amber)">Bloco 3 · Especificidade</span>
+  <h2 style="font-size:31px;max-width:1000px;">Agora sabemos que um estilo pode <span class="green">vir da herança</span>.<br>Mas e quando várias regras tentam definir <span class="amber">o mesmo elemento</span>?</h2>
+  <div class="reveal" style="display:flex;gap:12px;align-items:center;margin-top:4px;">
+    <div class="code" data-hl="css">p { color: blue; }</div>
+    <span class="dim mono">vs</span>
+    <div class="code" data-hl="css">.texto { color: green; }</div>
+    <span class="dim mono">vs</span>
+    <div class="code" data-hl="css">#principal { color: red; }</div>
+  </div>
+  <div class="code reveal" data-hl="html" style="margin-top:12px;">&lt;p id="principal" class="texto"&gt;Olá!&lt;/p&gt;</div>
+  <div class="bigq reveal" style="margin-top:26px;font-size:66px;">Quem <span class="amber">vence</span>?</div>
+  <p class="reveal" style="margin-top:12px;">É o problema do começo da aula. Agora vamos resolver de verdade.</p>
+  <aside class="nt"><ul>
+    <li>Slide de virada: 20 segundos. Não revele — a resposta sai naturalmente em dois slides.</li>
+    <li>Conecte: "herança é o plano B. Quando existem regras mirando o elemento, o jogo é outro."</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S13 — A ESCADA DA PRIORIDADE ═══════════ -->
+<div class="slide" id="s13">
+  <span class="label" style="color:var(--amber)">Conceito · Especificidade</span>
+  <h2>O CSS precisa decidir <span class="amber">qual regra tem mais força</span></h2>
+  <div class="row" style="align-items:center;">
+    <div class="col" style="flex:1.25;">
+      <div class="ladder">
+        <div class="ldown">▲ mais forte</div>
+        <div class="rung r1 reveal"><span class="nm red">!important</span><span class="ex">regra à parte</span></div>
+        <div class="rung r2 reveal"><span class="nm coral">estilo inline</span><span class="ex">style="color: red"</span></div>
+        <div class="rung r3 reveal"><span class="nm pink">ID</span><span class="ex">#titulo</span></div>
+        <div class="rung r4 reveal"><span class="nm amber">classe · atributo · pseudo-classe</span><span class="ex">.texto &nbsp;[type="text"] &nbsp;:hover</span></div>
+        <div class="rung r5 reveal"><span class="nm cyan">elemento · pseudo-elemento</span><span class="ex">p &nbsp;div &nbsp;::before</span></div>
+        <div class="ldown">▼ mais fraco</div>
+      </div>
+    </div>
+    <div class="col" style="flex:.75;">
+      <div class="card c-amber reveal">
+        <h3 class="amber">Especificidade = a força de um seletor</h3>
+        <p>Quanto mais <strong>específico</strong> é o alvo, maior a prioridade da regra.</p>
+      </div>
+      <div class="lg reveal"><span class="k cyan" style="width:104px;">p</span><span class="d">todos os parágrafos da página</span></div>
+      <div class="lg reveal"><span class="k amber" style="width:104px;">.aviso</span><span class="d">só quem tem essa classe</span></div>
+      <div class="lg reveal"><span class="k pink" style="width:104px;">#mensagem</span><span class="d">um único elemento</span></div>
+    </div>
+  </div>
+  <div class="note r reveal"><strong class="red">Atenção:</strong> <code>!important</code> não é simplesmente "o maior número" desta lista. Ele muda a declaração de liga — por isso tem um slide só para ele mais adiante.</div>
+  <aside class="nt"><ul>
+    <li>Leia a escada de baixo para cima: quanto mais preciso o alvo, mais forte.</li>
+    <li>Use os três exemplos da direita: "todos os parágrafos" × "só os avisos" × "um elemento só".</li>
+    <li>Agora dá para responder a abertura: #mensagem vencia porque ID está acima de classe e de elemento.</li>
+    <li>Os três degraus do meio (ID, classe, elemento) viram o placar A-B-C no próximo slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S14 — O PLACAR A-B-C ═══════════ -->
+<div class="slide" id="s14">
+  <span class="label" style="color:var(--amber)">Sistema de pontuação</span>
+  <h2>O placar da especificidade: <span class="pink">A</span><span class="dim"> – </span><span class="amber">B</span><span class="dim"> – </span><span class="cyan">C</span></h2>
+  <div class="abc w">
+    <div class="abcc a reveal"><div class="L pink">A</div><h3>IDs</h3><div class="ex pink">#titulo &nbsp;#app</div></div>
+    <div class="abcc b reveal"><div class="L amber">B</div><h3>Classes, atributos e pseudo-classes</h3><div class="ex amber">.texto &nbsp;[type="text"] &nbsp;:hover</div></div>
+    <div class="abcc c reveal"><div class="L cyan">C</div><h3>Elementos e pseudo-elementos</h3><div class="ex cyan">p &nbsp;div &nbsp;::before</div></div>
+  </div>
+  <div class="grid-2 w" style="margin-top:14px;">
+    <div class="card c-violet reveal">
+      <h3 class="violet">Como comparar dois placares</h3>
+      <p>Da esquerda para a direita, igual a quadro de medalhas 🥇🥈🥉: primeiro <strong class="pink">A</strong>. Empatou? Olhe <strong class="amber">B</strong>. Empatou? Olhe <strong class="cyan">C</strong>.</p>
+      <p class="mono" style="margin-top:8px;font-size:15px;color:var(--text);"><span class="sa">1</span>-<span class="sb">0</span>-<span class="sc">0</span> <span class="green">&nbsp;vence&nbsp;</span> <span class="sa">0</span>-<span class="sb">9</span>-<span class="sc">9</span></p>
+    </div>
+    <div class="card c-cyan reveal">
+      <h3 class="cyan">O que não conta ponto</h3>
+      <p>O seletor universal <code class="tx">*</code> e os combinadores: espaço, <code class="tx">&gt;</code>, <code class="tx">+</code> e <code class="tx">~</code>.</p>
+      <p style="margin-top:8px;">Eles mudam <strong>quem</strong> é selecionado, não a <strong>força</strong> da regra.</p>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Cada seletor ganha um placar de três números. Conta-se quantos IDs, quantas classes (e parentes) e quantos elementos ele tem.</li>
+    <li>Analogia do quadro de medalhas: 1 ouro vale mais que 9 pratas e 9 bronzes.</li>
+    <li>Pergunta rápida: "div &gt; p vale mais que div p?" Não — o &gt; não conta. Os dois são 0-0-2.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S15 — CALCULADORA ═══════════ -->
+<div class="slide" id="s15" data-steps="14">
+  <span class="label" style="color:var(--amber)">Contando na prática</span>
+  <h2>De onde vem <span class="amber">cada número</span> do placar</h2>
+  <div class="row" style="align-items:center;">
+    <div class="col" style="flex:none;width:310px;">
+      <p class="qlabel"><span>Do simples ao composto</span></p>
+      <div class="presets" id="presets"></div>
+      <input class="calc-in" id="calc-in" placeholder="ou digite qualquer seletor…" spellcheck="false" autocomplete="off" aria-label="Digite um seletor CSS">
+    </div>
+    <div class="col" style="justify-content:center;gap:18px;">
+      <div class="seldisp" id="seldisp"></div>
+      <div class="score">
+        <div class="sbox"><div class="v sa" id="sc-a">?</div><div class="c">A · IDs</div></div>
+        <div class="sbox"><div class="v sb" id="sc-b">?</div><div class="c">B · classes, atributos,<br>pseudo-classes</div></div>
+        <div class="sbox"><div class="v sc" id="sc-c">?</div><div class="c">C · elementos,<br>pseudo-elementos</div></div>
+      </div>
+      <p id="calc-msg" class="center" style="min-height:24px;font-size:14.5px;"></p>
+    </div>
+  </div>
+  <div class="cue">A cada →: primeiro aparece o seletor ("quanto vale?"), depois o placar.</div>
+  <aside class="nt"><ul>
+    <li>Cada seletor aparece primeiro sem cor: peça o placar para a turma. O → seguinte pinta cada pedaço e conta.</li>
+    <li>Nos dois últimos, peça que alguém conte em voz alta, pedaço por pedaço.</li>
+    <li>Os dois últimos (a:hover e li::before) cobrem pseudo-classe (B) e pseudo-elemento (C).</li>
+    <li>Sobrou tempo ou veio pergunta "e esse aqui?": digite o seletor na caixa. Ela calcula ao vivo.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S16 — RODADA RÁPIDA ═══════════ -->
+<div class="slide" id="s16" data-steps="5">
+  <span class="label" style="color:var(--amber)">Checkpoint 2 · três rodadas</span>
+  <h2>Rodada rápida: <span class="amber">quem vence?</span></h2>
+  <div class="rtabs">
+    <button class="rtab" data-act="jump:0">Rodada 1 · elemento × classe</button>
+    <button class="rtab" data-act="jump:2">Rodada 2 · dois elementos × classe</button>
+    <button class="rtab" data-act="jump:4">Rodada 3 · entra um ID</button>
+  </div>
+  <div class="rounds">
+    <div class="round">
+      <div class="col"><div class="code" data-html="r1"></div><div class="code cssb" data-css="r1" data-step="1"></div></div>
+      <div class="col">
+        <div class="qlabel"><span>Qual vence?</span></div>
+        <div class="opts c2" data-step="1"><button class="opt"><i class="sw" style="background:blue"></i>blue · p</button><button class="opt ok"><i class="sw" style="background:green"></i>green · .texto</button></div>
+        <div class="pv" data-pv="r1" data-step="1"></div>
+        <div class="note a step" data-step="1" style="margin-top:0;"><strong class="amber">A coluna B decide.</strong> Uma classe (0-1-0) vale mais que um elemento (0-0-1).</div>
+      </div>
+    </div>
+    <div class="round">
+      <div class="col"><div class="code" data-html="r2"></div><div class="code cssb" data-css="r2" data-step="3"></div></div>
+      <div class="col">
+        <div class="qlabel"><span>E agora, com dois elementos?</span></div>
+        <div class="opts c2" data-step="3"><button class="opt"><i class="sw" style="background:blue"></i>blue · div p</button><button class="opt ok"><i class="sw" style="background:green"></i>green · .texto</button></div>
+        <div class="pv" data-pv="r2" data-step="3"></div>
+        <div class="note a step" data-step="3" style="margin-top:0;"><strong class="amber">Continua a classe.</strong> 0-0-2 perde para 0-1-0: compara-se coluna por coluna, e C nunca "vira" B.</div>
+      </div>
+    </div>
+    <div class="round">
+      <div class="col"><div class="code" data-html="r3"></div><div class="code cssb" data-css="r3" data-step="5"></div></div>
+      <div class="col">
+        <div class="qlabel"><span>Entrou um ID no seletor. Mudou?</span></div>
+        <div class="opts c2" data-step="5"><button class="opt ok"><i class="sw" style="background:blue"></i>blue · #principal p</button><button class="opt"><i class="sw" style="background:green"></i>green · .texto</button></div>
+        <div class="pv" data-pv="r3" data-step="5"></div>
+        <div class="note a step" data-step="5" style="margin-top:0;"><strong class="pink">Virou.</strong> Com A = 1, a regra vence antes mesmo de olhar as classes.</div>
+      </div>
+    </div>
+  </div>
+  <div class="cue">Em cada rodada: voto → peça a justificativa com o placar → revele.</div>
+  <aside class="nt"><ul>
+    <li>Três rodadas, cada uma em dois toques de →: pergunta e resposta.</li>
+    <li>Exija a justificativa no formato "porque 0-1-0 é maior que 0-0-1" — não aceite só "porque classe é mais forte".</li>
+    <li>Rodada 2 é a que mais divide a turma. Deixe discutirem antes de revelar.</li>
+    <li>Rodada 3: o ID está no pai (div), mas faz parte do seletor que mira o p — por isso conta.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S17 — NÃO É QUANTIDADE ═══════════ -->
+<div class="slide" id="s17">
+  <span class="label" style="color:var(--amber)">Pegadinha clássica</span>
+  <h2>Seis elementos contra uma classe. <span class="amber">Quem leva?</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.1;">
+      <div class="code" data-html="qty"></div>
+      <div class="code cssb" data-css="qty" data-step="1"></div>
+    </div>
+    <div class="col">
+      <div class="qlabel"><span>Voto da turma</span><button class="timer" data-s="10">⏱ 0:10</button></div>
+      <div class="opts c2" data-step="1"><button class="opt"><i class="sw" style="background:blue"></i>blue · os 6 elementos</button><button class="opt ok"><i class="sw" style="background:red"></i>red · a classe</button></div>
+      <div class="pv" data-pv="qty" data-step="1"></div>
+      <div class="step" data-step="1" style="display:flex;gap:10px;align-items:center;justify-content:center;">
+        <button class="btn a" data-act="qty:-1">− tirar um div</button>
+        <button class="btn a" data-act="qty:1">+ colocar mais um div</button>
+      </div>
+    </div>
+  </div>
+  <div class="note a step" data-step="1"><strong class="amber">Especificidade não é quantidade de seletores.</strong> O que importa é a categoria de cada pedaço. Podem empilhar divs à vontade: a coluna C nunca transborda para a B.</div>
+  <aside class="nt"><ul>
+    <li>Intuição errada comum: "o seletor maior é mais forte".</li>
+    <li>Depois de revelar, clique em "+ colocar mais um div" várias vezes: o placar chega a 0-0-13 e a classe continua vencendo.</li>
+    <li>Ou seja: não é conta em base 10. Onze elementos não viram uma classe.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S18 — DESAFIO PRINCIPAL ═══════════ -->
+<div class="slide" id="s18">
+  <div class="glow" style="background:radial-gradient(circle,rgba(244,114,182,.06),transparent 70%);"></div>
+  <span class="label" style="color:var(--pink)">⚡ Desafio principal · todo mundo</span>
+  <h2>Cinco regras, um parágrafo. <span class="pink">Qual será a cor final?</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.15;">
+      <div class="code" data-html="main"></div>
+      <div class="code cssb compact" data-css="main" style="font-size:16px;line-height:1.9;"></div>
+    </div>
+    <div class="col" style="flex:.85;">
+      <div class="qlabel"><span>Alternativas</span><button class="timer" data-s="45">⏱ 0:45</button></div>
+      <div class="opts">
+        <button class="opt"><span class="l">A</span><i class="sw" style="background:blue"></i>azul</button>
+        <button class="opt"><span class="l">B</span><i class="sw" style="background:green"></i>verde</button>
+        <button class="opt"><span class="l">C</span><i class="sw" style="background:red"></i>vermelho</button>
+        <button class="opt"><span class="l">D</span><i class="sw" style="background:purple"></i>roxo</button>
+        <button class="opt"><span class="l">E</span>depende da ordem das regras</button>
+      </div>
+      <div class="note" style="margin-top:2px;"><strong class="cyan">Não vale chutar.</strong> Anotem o placar A-B-C de cada regra antes de votar.</div>
+    </div>
+  </div>
+  <div class="cue">Dispare o cronômetro. A resposta só aparece no próximo slide, passo a passo.</div>
+  <aside class="nt"><ul>
+    <li>45 segundos, de preferência em duplas, com papel: um placar por regra.</li>
+    <li>Colete os votos por letra e clique na mais votada (ela fica marcada).</li>
+    <li>Não confirme nem negue nada aqui. A resolução é o próximo slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S19 — RESOLUÇÃO DO DESAFIO ═══════════ -->
+<div class="slide" id="s19">
+  <span class="label" style="color:var(--pink)">Resolução · o raciocínio, não só a resposta</span>
+  <h2>Resolvendo <span class="pink">passo a passo</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.05;">
+      <div class="code sm" data-html="main2"></div>
+      <div class="code cssb compact" data-css="main2" data-step="2" data-mark="3" style="font-size:15.5px;line-height:1.85;"></div>
+      <div class="pv" data-pv="main2" data-step="3"></div>
+    </div>
+    <div class="col" style="flex:.95;">
+      <div class="rsteps">
+        <div class="rs step" data-step="1"><div class="n">1</div><div><div class="t">Quais regras miram o &lt;p&gt;?</div><div class="d">Todas as cinco: ele é um p, está dentro da div #app e tem as classes texto e destaque.</div></div></div>
+        <div class="rs step" data-step="2"><div class="n">2</div><div><div class="t">Qual é o placar de cada uma?</div><div class="d">Uma coluna por vez: IDs, depois classes, depois elementos.</div></div></div>
+        <div class="rs fin step" data-step="3"><div class="n">3</div><div><div class="t">Compare a coluna A primeiro</div><div class="d">Só <code class="pink">#app p</code> tem A = 1. Acabou: nem precisa olhar B e C. <strong class="green">Resposta: D, roxo.</strong></div></div></div>
+        <div class="rs step" data-step="4"><div class="n">4</div><div><div class="t">E se apagarmos o <span class="pink">#app p</span>?</div><div class="d">Clique nessa regra para desligá-la. Sobram <code class="amber">.texto</code> e <code class="amber">.destaque</code>, empatadas em 0-1-0. Quem leva agora?</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cue">No passo 4, deixe a turma arriscar: é o gancho para "empate" no próximo bloco.</div>
+  <aside class="nt"><ul>
+    <li>Passo 1: confirme com a turma que todas as regras servem no elemento — é sempre a primeira checagem.</li>
+    <li>Passo 2: peça os placares antes de mostrar. Erro comum: contar div p como 0-1-1.</li>
+    <li>Passo 3: no CSS, as regras perdedoras ficam riscadas, igual ao DevTools do navegador.</li>
+    <li>Passo 4: desligue #app p clicando nele. O texto fica vermelho (.destaque vem depois de .texto). Não explique ainda — "guardem essa".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S20 — BÔNUS: CASOS ESPECIAIS ═══════════ -->
+<div class="slide" id="s20">
+  <span class="label" style="color:var(--dim)">Bônus · para os curiosos</span>
+  <h2>Seis casos que <span class="amber">parecem</span> uma coisa e valem outra</h2>
+  <div class="grid-3 w">
+    <div class="spc reveal" data-sel="*"><div class="top"></div><p>O seletor universal não soma nada.</p></div>
+    <div class="spc reveal" data-sel='[id="titulo"]'><div class="top"></div><p>É seletor de <strong>atributo</strong>: vale como classe. Já <code class="pink">#titulo</code> vale 1-0-0.</p></div>
+    <div class="spc reveal" data-sel=".btn.btn"><div class="top"></div><p>Repetir a classe aumenta a força. Funciona — mas é gambiarra.</p></div>
+    <div class="spc reveal" data-sel=":where(#titulo)"><div class="top"></div><p><code>:where()</code> vale sempre zero, não importa o que tem dentro.</p></div>
+    <div class="spc reveal" data-sel=":is(p, #titulo)"><div class="top"></div><p><code>:is()</code> assume o argumento mais específico da lista.</p></div>
+    <div class="spc reveal" data-sel=":not(#titulo)"><div class="top"></div><p>O <code>:not()</code> em si não soma. O argumento dele, sim.</p></div>
+  </div>
+  <div class="note reveal"><strong class="cyan">Para levar:</strong> o placar olha o <strong>tipo</strong> de cada pedaço do seletor, não o que ele acaba selecionando. <code>[id="titulo"]</code> e <code>#titulo</code> pegam o mesmo elemento com forças diferentes.</div>
+  <aside class="nt"><ul>
+    <li>Slide opcional. Se o relógio estiver apertado, passe direto.</li>
+    <li>Se usar: cubra o placar com a mão e pergunte "quanto vale?" em dois ou três cards.</li>
+    <li>Este conteúdo não entra no quiz final.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S21 — EMPATE ═══════════ -->
+<div class="slide" id="s21">
+  <span class="label" style="color:var(--violet)">Bloco 4 · Cascata</span>
+  <h2>Mesmo placar dos dois lados. <span class="violet">E agora?</span></h2>
+  <div class="row">
+    <div class="col">
+      <div class="code" data-html="tie"></div>
+      <div class="code cssb always" data-css="tie" data-step="1"></div>
+    </div>
+    <div class="col">
+      <div class="qlabel"><span>Voto da turma</span><button class="timer" data-s="10">⏱ 0:10</button></div>
+      <div class="opts c2" data-step="1" id="tie-opts"><button class="opt"><i class="sw" style="background:blue"></i>blue</button><button class="opt ok"><i class="sw" style="background:red"></i>red</button></div>
+      <div class="pv" data-pv="tie" data-step="1"></div>
+      <div class="note v step" data-step="1" style="margin-top:0;"><strong class="violet">Quando a especificidade empata, a regra que aparece depois vence.</strong></div>
+      <div class="step" data-step="2" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn a" data-act="swap:tie">⇅ Inverter a ordem no CSS</button>
+        <button class="btn" data-act="tieHtml">⇄ Inverter as classes no HTML</button>
+      </div>
+    </div>
+  </div>
+  <div class="note step" data-step="2"><strong class="cyan">Vale a ordem das regras no CSS.</strong> A ordem das classes dentro de <code>class="…"</code> não muda nada — testem os dois botões.</div>
+  <aside class="nt"><ul>
+    <li>É a resposta do passo 4 do desafio: empate em 0-1-0, decide a ordem.</li>
+    <li>Passo 2: inverta a ordem no CSS — a cor muda. Depois inverta as classes no HTML — nada muda.</li>
+    <li>Agora sim dá para corrigir a frase: "a última regra vence… só quando há empate de especificidade".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S22 — INLINE ═══════════ -->
+<div class="slide" id="s22">
+  <span class="label" style="color:var(--coral)">Prioridade · estilo inline</span>
+  <h2>Estilo inline: <span class="coral">escrito direto na tag</span></h2>
+  <div class="row">
+    <div class="col">
+      <div class="code" data-html="inl"></div>
+      <div class="code cssb" data-css="inl" data-step="1" data-extra="2"></div>
+    </div>
+    <div class="col">
+      <div class="qlabel"><span>Voto da turma</span><button class="timer" data-s="10">⏱ 0:10</button></div>
+      <div class="opts c2" data-step="1"><button class="opt"><i class="sw" style="background:blue"></i>blue · regra p</button><button class="opt ok"><i class="sw" style="background:red"></i>red · inline</button></div>
+      <div class="pv" data-pv="inl" data-step="1"></div>
+      <div class="note step" data-step="1" style="margin-top:0;background:rgba(224,135,98,.07);border-color:rgba(224,135,98,.3);"><strong class="coral">Inline não tem seletor</strong> — fica acima de qualquer placar A-B-C. Pense numa coluna extra à esquerda: <span class="mono"><span class="coral">1</span>-<span class="sa">0</span>-<span class="sb">0</span>-<span class="sc">0</span></span>.</div>
+    </div>
+  </div>
+  <div class="note a step" data-step="2"><strong class="amber">Nem um ID resolve:</strong> ligue a regra <code class="pink">#msg</code> no CSS e vejam. Na prática, evite inline para estilizar — depois, só <code class="red">!important</code> consegue derrubá-lo.</div>
+  <aside class="nt"><ul>
+    <li>Mostre o conflito acontecendo: a regra p existe, mas o style na tag vence.</li>
+    <li>Passo 2: clique na regra #msg para ligá-la. Continua vermelho.</li>
+    <li>Gancho: "então nada vence o inline?" → próximo slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S23 — !IMPORTANT ═══════════ -->
+<div class="slide" id="s23">
+  <span class="label" style="color:var(--red)">Prioridade · !important</span>
+  <h2><span class="red">!important</span>: a declaração que fura a fila</h2>
+  <div class="row">
+    <div class="col" style="flex:1.05;">
+      <div class="code" data-html="imp"></div>
+      <div class="code cssb always marked" data-css="imp"></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn" id="imp-inl" data-act="impInline">+ estilo inline no HTML</button>
+        <span class="dim" style="font-size:12.5px;">Clique nos <span class="mono red">!important</span> para ligar e desligar.</span>
+      </div>
+    </div>
+    <div class="col" style="flex:.95;">
+      <div class="pv open" data-pv="imp"></div>
+      <div class="card c-red" id="imp-why" style="min-height:74px;"></div>
+      <div class="lanes">
+        <div class="lane" style="border-color:rgba(255,77,109,.4);background:rgba(255,77,109,.05);"><div class="h red">Liga 1 · declarações !important</div><p>Disputam primeiro. Se houver mais de uma, volta a valer a especificidade e, depois, a ordem.</p></div>
+        <div class="lane" style="border-color:var(--border2);background:var(--s1);"><div class="h dim">Liga 2 · declarações normais</div><p>Só decidem se a liga 1 estiver vazia: inline › placar A-B-C › ordem.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="cue">Roteiro: desligue o !important do p → religue → ligue também no #titulo → ligue o inline.</div>
+  <aside class="nt"><ul>
+    <li>Estado inicial: p { color: red !important } vence o ID. Uma declaração !important ganha de qualquer declaração normal.</li>
+    <li>Desligue o !important do p: volta a valer o placar, e #titulo (1-0-0) vence.</li>
+    <li>Ligue !important nos dois: entre importantes, a especificidade decide de novo — azul.</li>
+    <li>Ligue o inline: sem nenhum !important, ele vence todos. Com !important em alguma regra, o inline normal perde.</li>
+    <li>Por isso não é "o maior número": ele muda a declaração de liga.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S24 — CUIDADO COM !IMPORTANT ═══════════ -->
+<div class="slide" id="s24">
+  <span class="label" style="color:var(--red)">Cuidado</span>
+  <h2>⚠️ Não use <span class="red">!important</span> como solução padrão</h2>
+  <div class="row">
+    <div class="col" style="flex:1.1;">
+      <p class="qlabel"><span>A guerra do !important, em 4 capítulos</span></p>
+      <div class="war">
+        <div class="wstep reveal"><div class="n">1</div><div><div class="c">.btn { color: blue; }</div><div class="d">Não funcionou: alguma regra mais forte está vencendo.</div></div></div>
+        <div class="wstep reveal"><div class="n">2</div><div><div class="c">.btn { color: blue <span class="red">!important</span>; }</div><div class="d">"Resolvido!" — sem descobrir quem estava vencendo.</div></div></div>
+        <div class="wstep reveal"><div class="n">3</div><div><div class="c">.btn-perigo { color: red <span class="red">!important</span>; }</div><div class="d">Semanas depois, um botão precisa ser vermelho. Agora só outro !important vence.</div></div></div>
+        <div class="wstep reveal"><div class="n">4</div><div><div class="c">#form .btn-perigo { color: red <span class="red">!important</span>; }</div><div class="d">E depois, !important com mais especificidade. A escalada não tem fim.</div></div></div>
+      </div>
+    </div>
+    <div class="col" style="flex:.9;">
+      <div class="card c-green reveal">
+        <h3 class="green">Antes de usar, tente nesta ordem</h3>
+        <ul class="vd-list" style="margin-top:8px;">
+          <li data-n="1.">Conferir se o seletor acerta mesmo o elemento.</li>
+          <li data-n="2.">Descobrir <strong>qual regra</strong> está vencendo — e por quê.</li>
+          <li data-n="3.">Ajustar a especificidade com critério.</li>
+          <li data-n="4." style="margin-bottom:0;">Reorganizar a ordem das regras.</li>
+        </ul>
+      </div>
+      <div class="card c-amber reveal">
+        <h3 class="amber">Quando ele faz sentido</h3>
+        <p>Em classes utilitárias que precisam valer sempre, como <code class="tx">.oculto { display: none !important; }</code>, ou para sobrescrever CSS de terceiros que você não pode editar.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Conte como história: cada !important obriga o próximo conflito a usar outro.</li>
+    <li>Mensagem central: !important esconde o problema em vez de resolver. O CSS fica difícil de manter.</li>
+    <li>A lista da direita é um ensaio do checklist de debugging que vem daqui a pouco.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S25 — O MAPA COMPLETO ═══════════ -->
+<div class="slide" id="s25">
+  <span class="label" style="color:var(--violet)">O mapa completo · o slide mais importante de hoje</span>
+  <h2>Três mecanismos, <span class="violet">uma decisão</span></h2>
+  <div class="grid-3 w">
+    <div class="card c-green reveal"><h3 class="green">HERANÇA</h3><p class="tx" style="font-size:15.5px;font-weight:500;">"De onde o valor pode vir?"</p><p style="font-size:13px;margin-top:4px;">Do elemento pai — quando a propriedade herda e nenhuma regra mira o elemento.</p></div>
+    <div class="card c-amber reveal"><h3 class="amber">ESPECIFICIDADE</h3><p class="tx" style="font-size:15.5px;font-weight:500;">"Qual seletor tem prioridade?"</p><p style="font-size:13px;margin-top:4px;">A força de cada seletor, medida no placar A-B-C.</p></div>
+    <div class="card c-violet reveal"><h3 class="violet">CASCATA</h3><p class="tx" style="font-size:15.5px;font-weight:500;">"Como o CSS resolve conflitos entre regras?"</p><p style="font-size:13px;margin-top:4px;">O processo inteiro de decisão. A especificidade é um dos critérios dele.</p></div>
+  </div>
+  <div class="flow w reveal" style="margin-top:16px;">
+    <div style="width:206px;display:flex;flex-direction:column;gap:8px;justify-content:center;">
+      <div class="dim mono center" style="font-size:11px;letter-spacing:.5px;">para cada propriedade<br>de cada elemento</div>
+      <div class="fq">Alguma declaração <span class="cyan">mira este elemento</span>?</div>
+    </div>
+    <div class="fpanel" style="flex:1.75;border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.04);">
+      <div class="ph violet">Sim → a cascata escolhe uma</div>
+      <div class="chain">
+        <div class="lk"><div class="n">1º</div><div class="t red">!important?</div><div class="d">vence as normais</div></div>
+        <div class="ar">›</div>
+        <div class="lk"><div class="n">2º</div><div class="t coral">inline?</div><div class="d">style na tag</div></div>
+        <div class="ar">›</div>
+        <div class="lk"><div class="n">3º</div><div class="t"><span class="sa">A</span>-<span class="sb">B</span>-<span class="sc">C</span></div><div class="d">especificidade</div></div>
+        <div class="ar">›</div>
+        <div class="lk"><div class="n">4º</div><div class="t violet">ordem</div><div class="d">a última vence</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--dim);">O primeiro critério que desempatar encerra a disputa.</p>
+    </div>
+    <div class="fpanel" style="flex:1;border-color:rgba(0,255,157,.35);background:rgba(0,255,157,.035);">
+      <div class="ph green">Não → plano B</div>
+      <div class="fq" style="font-size:15.5px;padding:9px 10px;">A propriedade herda?</div>
+      <div class="chain">
+        <div class="lk"><div class="n">sim</div><div class="t green">valor do pai</div></div>
+        <div class="lk"><div class="n">não</div><div class="t soft">valor inicial</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="note v reveal"><strong class="violet">Repare:</strong> a herança só entra quando ninguém mira o elemento. Qualquer regra direta — até a mais fraca — passa na frente do valor herdado.</div>
+  <aside class="nt"><ul>
+    <li>Aponte os três cards primeiro: são três perguntas diferentes, não três nomes para a mesma coisa.</li>
+    <li>Depois percorra o fluxo com o dedo: mira o elemento? Sim → 4 critérios em ordem. Não → herda ou usa o inicial.</li>
+    <li>Reforce a nota final: é exatamente o que o próximo desafio cobra.</li>
+    <li>Sugira que fotografem este slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S26 — DESAFIO INTEGRADOR ═══════════ -->
+<div class="slide" id="s26">
+  <div class="glow" style="background:radial-gradient(circle,rgba(168,85,247,.07),transparent 70%);"></div>
+  <span class="label" style="color:var(--violet)">⚡ Desafio integrador · herança + especificidade + cascata</span>
+  <h2>"CSS é estranho?" <span class="violet">Qual será a cor do texto?</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.15;">
+      <div class="code" data-html="integ"></div>
+      <div class="code cssb compact" data-css="integ" style="font-size:16px;line-height:1.9;"></div>
+    </div>
+    <div class="col" style="flex:.85;">
+      <div class="qlabel"><span>Alternativas</span><button class="timer" data-s="45">⏱ 0:45</button></div>
+      <div class="opts">
+        <button class="opt"><span class="l">A</span><i class="sw" style="background:black"></i>preto</button>
+        <button class="opt"><span class="l">B</span><i class="sw" style="background:blue"></i>azul</button>
+        <button class="opt"><span class="l">C</span><i class="sw" style="background:green"></i>verde</button>
+        <button class="opt"><span class="l">D</span><i class="sw" style="background:red"></i>vermelho</button>
+        <button class="opt"><span class="l">E</span><i class="sw" style="background:purple"></i>roxo</button>
+      </div>
+      <div class="note v" style="margin-top:2px;"><strong class="violet">Dica:</strong> comecem pela primeira pergunta do mapa — quais regras miram o &lt;p&gt;?</div>
+    </div>
+  </div>
+  <div class="cue">Provoque: "tem um ID ali. Por que a resposta não seria verde?"</div>
+  <aside class="nt"><ul>
+    <li>Atenção ao HTML: .container e #app são a mesma div. O p só tem a classe texto.</li>
+    <li>A armadilha é o verde: #app é ID, mas mira a div, não o parágrafo.</li>
+    <li>Peça justificativa por escrito ou em dupla antes de avançar. A resolução é o próximo slide.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S27 — RESOLUÇÃO DO INTEGRADOR ═══════════ -->
+<div class="slide" id="s27">
+  <span class="label" style="color:var(--violet)">Resolução · usando o mapa</span>
+  <h2>Herança primeiro, <span class="violet">depois o placar</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.05;">
+      <div class="code sm" data-html="integ2"></div>
+      <div class="code cssb compact" data-css="integ2" data-step="3" style="font-size:15.5px;line-height:1.85;"></div>
+      <div class="pv" data-pv="integ2" data-step="4"></div>
+    </div>
+    <div class="col" style="flex:.95;">
+      <div class="rsteps">
+        <div class="rs step" data-step="1"><div class="n">1</div><div><div class="t"><span class="t-prop">color</span> poderia ser herdado</div><div class="d">Sem regra própria, o &lt;p&gt; pegaria a cor da div. Lá, <code class="pink">#app</code> vence <code class="amber">.container</code>: ele herdaria <strong>verde</strong>.</div></div></div>
+        <div class="rs step" data-step="2"><div class="n">2</div><div><div class="t">Mas existem regras que miram o &lt;p&gt;</div><div class="d"><code class="cyan">p</code> e <code class="amber">.texto</code>. Regra direta ganha da herança — não importa a força do seletor lá no pai.</div></div></div>
+        <div class="rs step" data-step="3"><div class="n">3</div><div><div class="t">Entre as diretas, o placar decide</div><div class="d"><code class="amber">.texto</code> (0-1-0) vence <code class="cyan">p</code> (0-0-1).</div></div></div>
+        <div class="rs fin step" data-step="4"><div class="n">4</div><div><div class="t">Resposta: E, roxo</div><div class="d">Testem clicando nas regras: sem <code class="amber">.texto</code>, fica vermelho. Sem <code class="cyan">p</code> também, fica verde — aí sim, herdado.</div></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Passo 1: mostre que a herança sozinha já tinha um conflito (na div) — e que ele se resolve pelo placar.</li>
+    <li>Passo 2 é o ponto do desafio: body, .container e #app não miram o parágrafo. Saem da disputa.</li>
+    <li>Passo 3: no CSS, as regras que miram ancestrais ficam apagadas; p aparece riscado; .texto vence.</li>
+    <li>Passo 4: desligue .texto e depois p para a turma ver vermelho e, por fim, o verde herdado.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S28 — APLICAÇÃO PRÁTICA ═══════════ -->
+<div class="slide" id="s28">
+  <span class="label">Bloco 5 · Na vida real</span>
+  <h2>O botão de excluir <span class="red">deveria ser vermelho</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.1;">
+      <div class="code" data-html="btn"></div>
+      <div class="code cssb compact" data-css="btn" data-step="1" data-extra="2" style="line-height:1.9;"></div>
+    </div>
+    <div class="col" style="flex:.9;">
+      <div class="qlabel qn"><span>O botão está dentro do formulário e tem a classe <code class="amber">.btn-danger</code>. Qual fundo aparece?</span><button class="timer" data-s="20">⏱ 0:20</button></div>
+      <div class="opts c3" data-step="1">
+        <button class="opt"><i class="sw" style="background:blue"></i>azul</button>
+        <button class="opt"><i class="sw" style="background:red"></i>vermelho</button>
+        <button class="opt ok"><i class="sw" style="background:green"></i>verde</button>
+      </div>
+      <div class="pv" data-pv="btn" data-step="1"></div>
+      <div class="note a step" data-step="1" style="margin-top:0;"><strong class="pink">#form button</strong> carrega um ID (1-0-1) e atropela a classe (0-1-0). O CSS está "certo" — só não faz o que o dev queria.</div>
+    </div>
+  </div>
+  <div class="note g step" data-step="2"><strong class="green">Conserto sem !important:</strong> um seletor um pouco mais forte. Ligue <code>#form .btn-danger</code> (1-1-0) no CSS. E a lição de fundo: <strong>prefira classes a IDs nos seletores</strong> — regra geral fraca é fácil de sobrescrever depois.</div>
+  <div class="cue">Isso não é questão de prova: é o bug mais comum de quem escreve CSS.</div>
+  <aside class="nt"><ul>
+    <li>Conte como caso real: você criou .btn-danger, aplicou e o botão saiu verde.</li>
+    <li>Depois da revelação, peça o diagnóstico usando o placar.</li>
+    <li>Passo 2: clique na regra #form .btn-danger para ligá-la — o botão fica vermelho.</li>
+    <li>Pergunte: "e se tivessem usado !important?" Funcionaria, mas começa a guerra do slide anterior.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S29 — CHECKLIST DE DEBUGGING ═══════════ -->
+<div class="slide" id="s29">
+  <span class="label">Ferramenta · leve para a vida</span>
+  <h2>"Meu CSS não funciona." <span class="cyan">Faça estas 7 perguntas</span></h2>
+  <div class="chk w">
+    <div class="ck reveal"><div class="n green">1</div><div><div class="q">A propriedade está sendo herdada?</div><div class="h">Ou é das que não herdam, como margin, border e padding?</div></div></div>
+    <div class="ck reveal"><div class="n violet">2</div><div><div class="q">Existe outra regra sobrescrevendo?</div><div class="h">Procure a mesma propriedade em outras regras que miram o elemento.</div></div></div>
+    <div class="ck reveal"><div class="n amber">3</div><div><div class="q">Qual é a especificidade?</div><div class="h">Calcule o placar A-B-C de cada candidata.</div></div></div>
+    <div class="ck reveal"><div class="n violet">4</div><div><div class="q">Existe empate?</div><div class="h">O placar é igual dos dois lados?</div></div></div>
+    <div class="ck reveal"><div class="n violet">5</div><div><div class="q">A ordem da declaração importa?</div><div class="h">No empate, a que aparece depois vence.</div></div></div>
+    <div class="ck reveal"><div class="n red">6</div><div><div class="q">Existe !important?</div><div class="h">Ou um style inline escondido no HTML?</div></div></div>
+    <div class="ck reveal"><div class="n cyan">7</div><div><div class="q">O seletor realmente seleciona o elemento?</div><div class="h">Erro de digitação, classe faltando no HTML, ponto ou # esquecido…</div></div></div>
+    <div class="ck dev reveal"><div class="n" style="font-size:22px;">🔍</div><div><div class="q cyan">Onde ver tudo isso</div><div class="h" style="color:var(--soft);">F12 → Inspecionar → aba Styles. Declaração riscada perdeu a disputa. "Inherited from…" veio por herança.</div></div></div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Leia as perguntas como um roteiro, na ordem. São os mesmos conceitos da aula, agora virados em ferramenta.</li>
+    <li>A 7 costuma ser a causa mais boba e mais frequente — vale conferir cedo.</li>
+    <li>Se der, abra o DevTools em qualquer site por 30 segundos e mostre uma declaração riscada.</li>
+    <li>O próximo slide é para aplicar o checklist.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S30 — DESAFIO DE DEBUG ═══════════ -->
+<div class="slide" id="s30">
+  <span class="label">🐞 Desafio de debug · usem o checklist</span>
+  <h2>O dev esperava vermelho. <span class="cyan">Por que apareceu azul?</span></h2>
+  <div class="row">
+    <div class="col" style="flex:1.05;">
+      <div class="code" data-html="dbg"></div>
+      <div class="code cssb compact" data-css="dbg" data-step="1" data-extra="2" style="line-height:1.9;"></div>
+      <div class="pv open" data-pv="dbg"></div>
+    </div>
+    <div class="col" style="flex:.95;">
+      <div class="qlabel"><span>Diagnóstico da turma</span><button class="timer" data-s="30">⏱ 0:30</button></div>
+      <div class="rsteps">
+        <div class="rs step" data-step="1"><div class="n">?</div><div><div class="t">O diagnóstico</div><div class="d">As três regras miram o &lt;p&gt;. <code class="pink">#mensagem</code> tem A = 1 e vence <code class="amber">.erro</code> (0-1-0) antes de olhar qualquer outra coluna.</div></div></div>
+        <div class="rs fin step" data-step="2"><div class="n">✓</div><div><div class="t">Conserto 1 · tirar a cor do ID</div><div class="d">Se o ID não precisa definir cor, remova. Clique em <code class="pink">#mensagem</code> para desligar.</div></div></div>
+        <div class="rs fin step" data-step="2"><div class="n">✓</div><div><div class="t">Conserto 2 · seletor mais específico</div><div class="d">Ligue <code>#mensagem.erro</code> (1-1-0): vence o ID sozinho.</div></div></div>
+        <div class="rs step" data-step="2" style="border-color:rgba(255,77,109,.3);"><div class="n" style="background:rgba(255,77,109,.14);border-color:rgba(255,77,109,.4);color:var(--red);">✗</div><div><div class="t">Evite · .erro com !important</div><div class="d">Funciona hoje e cobra a conta depois.</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cue">Peça que percorram o checklist em voz alta: pergunta 2, depois a 3.</div>
+  <aside class="nt"><ul>
+    <li>O resultado já está visível (azul). A tarefa é explicar, não adivinhar.</li>
+    <li>Passo 1: o CSS ganha a marcação estilo DevTools — .erro riscada, #mensagem vencendo.</li>
+    <li>Passo 2: teste os dois consertos ao vivo clicando nas regras.</li>
+    <li>Feche: "nenhum conserto precisou de !important".</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S31 — PEGADINHAS ═══════════ -->
+<div class="slide" id="s31">
+  <span class="label" style="color:var(--amber)">Verdade ou mito?</span>
+  <h2>Cinco frases que <span class="amber">parecem certas</span></h2>
+  <div class="myths">
+    <div class="myth" data-step="1"><div class="in">
+      <div class="f"><div class="n">PEGADINHA 1</div><div class="q">"Mais seletores sempre significa mais especificidade."</div><div class="tap">clique para virar</div></div>
+      <div class="b"><div class="v">FALSO</div><p>Conta a categoria de cada pedaço, não a quantidade.</p><div class="ex">div div div p → 0-0-4<br>.texto → 0-1-0 ✓</div></div>
+    </div></div>
+    <div class="myth" data-step="2"><div class="in">
+      <div class="f"><div class="n">PEGADINHA 2</div><div class="q">"A última regra sempre vence."</div><div class="tap">clique para virar</div></div>
+      <div class="b"><div class="v">FALSO</div><p>Só quando a especificidade empata. Um ID no topo do arquivo vence uma classe no final.</p><div class="ex">ordem = critério de desempate</div></div>
+    </div></div>
+    <div class="myth" data-step="3"><div class="in">
+      <div class="f"><div class="n">PEGADINHA 3</div><div class="q">"Tudo é herdado do elemento pai."</div><div class="tap">clique para virar</div></div>
+      <div class="b"><div class="v">FALSO</div><p>Depende da propriedade. As de texto costumam herdar; as de caixa, não.</p><div class="ex">color ↓ herda<br>border ✗ não herda</div></div>
+    </div></div>
+    <div class="myth" data-step="4"><div class="in">
+      <div class="f"><div class="n">PEGADINHA 4</div><div class="q">"!important deve ser usado sempre que algo não funciona."</div><div class="tap">clique para virar</div></div>
+      <div class="b"><div class="v">FALSO</div><p>Ele esconde o problema e obriga o próximo conflito a usar !important também.</p><div class="ex">primeiro: quem está vencendo?</div></div>
+    </div></div>
+    <div class="myth" data-step="5"><div class="in">
+      <div class="f"><div class="n">PEGADINHA 5</div><div class="q">"Se a regra não funciona, basta colocar mais classes."</div><div class="tap">clique para virar</div></div>
+      <div class="b m"><div class="v">DEPENDE</div><p><strong>Não necessariamente.</strong> Contra um ID, um inline ou um !important, nenhuma quantidade de classes resolve.</p><div class="ex">.a.b.c.d → 0-4-0<br>#id → 1-0-0 ✓</div></div>
+    </div></div>
+  </div>
+  <div class="cue">Leia a frase, peça "verdade ou mito?" com as mãos, e só então vire o card (→).</div>
+  <aside class="nt"><ul>
+    <li>Ritmo de jogo: 15 segundos por card. Polegar para cima ou para baixo.</li>
+    <li>Para cada mito, peça um contraexemplo visto hoje antes de virar.</li>
+    <li>A 5 é a única que não é totalmente falsa: às vezes mais classes resolvem — o ponto é descobrir antes quem está vencendo.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S32 — SÍNTESE ═══════════ -->
+<div class="slide" id="s32">
+  <span class="label">Síntese · nada de novo aqui</span>
+  <h2>Tudo o que vimos, <span class="cyan">em uma tela</span></h2>
+  <div class="syn">
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">herança</div><div class="d">Valores descem do ancestral para os descendentes.</div></div>
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">herda × não herda</div><div class="d">Texto costuma herdar; caixa, não. Depende da propriedade.</div></div>
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">inherit</div><div class="d">Pegue o valor do pai, mesmo que a propriedade não herde.</div></div>
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">initial</div><div class="d">Valor inicial da especificação — não o do navegador.</div></div>
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">unset</div><div class="d">inherit se a propriedade herda; initial se não herda.</div></div>
+    <div class="sy reveal" style="--cl:var(--green)"><div class="k">revert</div><div class="d">Desfaz o CSS do autor: volta o padrão do navegador.</div></div>
+    <div class="sy reveal" style="--cl:var(--amber)"><div class="k">especificidade</div><div class="d">A força do seletor, no placar <span class="mono"><span class="sa">A</span>-<span class="sb">B</span>-<span class="sc">C</span></span>.</div></div>
+    <div class="sy reveal" style="--cl:var(--amber)"><div class="k">comparar seletores</div><div class="d">Da esquerda para a direita: A, depois B, depois C.</div></div>
+    <div class="sy reveal" style="--cl:var(--violet)"><div class="k">empate</div><div class="d">Placar igual dos dois lados: a especificidade não decide.</div></div>
+    <div class="sy reveal" style="--cl:var(--violet)"><div class="k">ordem da declaração</div><div class="d">No empate, a regra que aparece depois vence.</div></div>
+    <div class="sy reveal" style="--cl:var(--red)"><div class="k">!important</div><div class="d">Fura a fila das declarações normais. Use com parcimônia.</div></div>
+    <div class="sy reveal" style="--cl:var(--violet)"><div class="k">cascata</div><div class="d">O processo inteiro que escolhe o valor final.</div></div>
+  </div>
+  <div class="note reveal center"><strong class="tx" style="font-family:var(--f-d);font-size:16px;">"Qual estilo vai vencer e por quê?"</strong> — agora vocês têm o roteiro para responder.</div>
+  <aside class="nt"><ul>
+    <li>Revisão de 1 minuto: passe o olho por linha, sem reexplicar. Verde = herança, âmbar = especificidade, violeta = cascata.</li>
+    <li>Não introduza nada novo. É a preparação para as dúvidas e para o quiz.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S33 — DÚVIDAS ═══════════ -->
+<div class="slide" id="s33">
+  <div class="glow"></div>
+  <span class="label">Antes do quiz</span>
+  <h1 style="font-size:104px;"><span class="cyan" style="text-shadow:0 0 50px rgba(0,212,255,.35);">DÚVIDAS?</span></h1>
+  <p class="reveal center" style="margin:18px 0 22px;font-size:16px;">Este é o momento. Depois daqui, é com vocês.</p>
+  <div class="qchips">
+    <div class="qchip reveal">Ainda ficou alguma dúvida sobre <strong class="green">herança</strong>?</div>
+    <div class="qchip reveal">Como <strong class="amber">comparar</strong> dois seletores?</div>
+    <div class="qchip reveal">O que acontece quando a especificidade <strong class="violet">empata</strong>?</div>
+    <div class="qchip reveal">Quando a <strong class="violet">ordem</strong> da declaração importa?</div>
+    <div class="qchip reveal">Quando o <strong class="red">!important</strong> interfere?</div>
+  </div>
+  <aside class="nt"><ul>
+    <li>Espere de verdade: conte 10 segundos em silêncio antes de seguir.</li>
+    <li>Se ninguém perguntar, escolha uma das perguntas-guia e devolva para a turma responder.</li>
+    <li>Para tirar dúvida com exemplo, volte ao slide 15 (calculadora) ou 25 (mapa) clicando nos pontos lá embaixo.</li>
+    <li>Limite: 3 minutos. Não vire outro bloco de conteúdo.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S34 — QUIZ ═══════════ -->
+<div class="slide" id="s34">
+  <div class="glow" style="background:radial-gradient(circle,rgba(0,255,157,.06),transparent 70%);"></div>
+  <div style="display:flex;gap:56px;align-items:center;position:relative;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="qr" id="qr">QR Code do<br>Microsoft Forms<br><span class="dim2" style="color:var(--dim2);">(aparece quando o link for colado ao lado)</span></div>
+      <span class="tag tag-green">Aponte a câmera do celular</span>
+    </div>
+    <div style="max-width:600px;">
+      <span class="label" style="color:var(--green);text-align:left;display:block;">Quiz de revisão — Especificidade e Herança em CSS</span>
+      <h1 style="font-size:66px;text-align:left;">AGORA É<br><span class="green">COM VOCÊS<span class="cursor-v"></span></span></h1>
+      <div class="qlink" id="qlink" style="margin-top:20px;display:inline-block;">[ link do formulário entra aqui ]</div>
+      <ul class="vd-list" style="margin-top:18px;">
+        <li data-n="→">Leia cada questão com atenção.</li>
+        <li data-n="→">Escolha a alternativa mais adequada.</li>
+        <li data-n="→">Use o que vimos durante a aula.</li>
+      </ul>
+      <div class="qedit" id="qedit" style="margin-top:10px;">
+        <input id="qinput" type="url" placeholder="Apresentador: cole aqui o link do Forms" spellcheck="false" autocomplete="off" aria-label="Link do Microsoft Forms">
+        <button class="btn" data-act="quiz">gerar QR</button>
+      </div>
+    </div>
+  </div>
+  <aside class="nt"><ul>
+    <li>O QR Code já está fixo no slide e leva ao formulário "Perguntas - Herança e Especificidade".</li>
+    <li>Antes da aula, leia o QR com um celular para confirmar que o formulário está aberto para respostas.</li>
+    <li>O quiz acontece fora da apresentação. Deixe este slide na tela durante todo o tempo de resposta.</li>
+    <li>Combine o tempo com a turma (cerca de 5 minutos) antes de liberar.</li>
+  </ul></aside>
+</div>
+
+<!-- ═══════════ S35 — FIM ═══════════ -->
+<div class="slide" id="s35">
+  <div class="glow"></div>
+  <h1 style="font-size:120px;" class="cyan">FIM</h1>
+  <p class="mono" style="margin-top:22px;font-size:20px;color:var(--text);"><span class="amber">Especificidade</span> <span class="dim">+</span> <span class="green">Herança</span> <span class="dim">+</span> <span class="violet">Cascata</span></p>
+  <p style="margin-top:12px;font-size:17px;">agora vocês sabem por que o CSS escolhe determinada regra.</p>
+  <aside class="nt"><ul>
+    <li>Só agradeça. Nenhum conteúdo novo depois do quiz.</li>
+  </ul></aside>
+</div>
+
+</div><!-- #wrap -->
+<div id="notes"><div class="nh">Notas de quem apresenta · tecla N</div><ul id="notes-ul"></ul></div>
+<div id="nav"></div>
+<div id="ctr"></div>
+<div id="arrows">
+  <div id="hint"><span class="pips"></span><span class="tx"></span></div>
+  <button class="abtn txt" id="btn-notes" data-act="notes" title="Notas (N)">notas</button>
+  <button class="abtn txt" data-act="fs" title="Tela cheia (F)">⛶</button>
+  <button class="abtn" data-act="back" aria-label="Voltar">←</button>
+  <button class="abtn" data-act="fwd" aria-label="Avançar">→</button>
+</div>
+</div><!-- #stage -->
+<script>/* QR Code Generator for JavaScript — (c) 2009 Kazuhiko Arase — MIT license — embutido para o slide do quiz funcionar offline */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});</script>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO — edite só aqui
+   Cole o link do Microsoft Forms entre as aspas para deixá-lo fixo
+   no arquivo. (Também dá para colar direto no slide do quiz.)
+   ══════════════════════════════════════════════════════════════ */
+const QUIZ_LINK = 'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=TPFIsZcjLECrahtHERd6wD7lSuwOxgFGicrgHFWBhC1UQlM3VkREOVlNSk1PSVA4TVpXQlFLU0lNMi4u&origin=QRCode';
+const QUIZ_TITLE = 'Perguntas - Herança e Especificidade';
+
+/* ── util ── */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ══════════ ESPECIFICIDADE: tokenizador + cálculo ══════════ */
+const cmpSpec=(x,y)=>x[0]-y[0]||x[1]-y[1]||x[2]-y[2];
+function splitTop(s){const a=[];let d=0,c='';for(const ch of s){if(ch==='('||ch==='[')d++;if(ch===')'||ch===']')d--;if(ch===','&&d===0){a.push(c.trim());c='';}else c+=ch;}if(c.trim())a.push(c.trim());return a;}
+function tokSel(sel){
+  const out=[];let i=0;
+  while(i<sel.length){
+    const r=sel.slice(i);let m,t;
+    if(m=r.match(/^\s*[>+~]\s*/)) t={t:m[0],k:'comb',s:[0,0,0]};
+    else if(m=r.match(/^\s*,\s*/)) t={t:m[0],k:'comma',s:[0,0,0]};
+    else if(m=r.match(/^\s+/)) t={t:m[0],k:'comb',s:[0,0,0]};
+    else if(m=r.match(/^::[\w-]+/)||r.match(/^:(before|after|first-line|first-letter)\b/i)) t={t:m[0],k:'pe',s:[0,0,1]};
+    else if(m=r.match(/^:(is|not|where|has|matches)\(/i)){
+      let d=1,j=m[0].length;while(j<r.length&&d>0){if(r[j]==='(')d++;else if(r[j]===')')d--;j++;}
+      const fn=m[1].toLowerCase(),inner=r.slice(m[0].length,j-1);let best=[0,0,0];
+      if(fn!=='where')splitTop(inner).forEach(a=>{const s=specOf(a);if(cmpSpec(s,best)>0)best=s;});
+      t={t:r.slice(0,j),k:'fn',s:best};m=[t.t];
+    }
+    else if(m=r.match(/^:[\w-]+(\([^)]*\))?/)) t={t:m[0],k:'pc',s:[0,1,0]};
+    else if(m=r.match(/^#[\w-]+/)) t={t:m[0],k:'id',s:[1,0,0]};
+    else if(m=r.match(/^\.[\w-]+/)) t={t:m[0],k:'cls',s:[0,1,0]};
+    else if(m=r.match(/^\[[^\]]*\]/)) t={t:m[0],k:'attr',s:[0,1,0]};
+    else if(m=r.match(/^\*/)) t={t:m[0],k:'uni',s:[0,0,0]};
+    else if(m=r.match(/^[a-zA-Z][\w-]*/)) t={t:m[0],k:'el',s:[0,0,1]};
+    else {m=[r[0]];t={t:r[0],k:'unk',s:[0,0,0]};}
+    out.push(t);i+=m[0].length;
+  }
+  return out;
+}
+function specOf(sel){
+  const parts=splitTop(sel.trim());
+  if(parts.length>1){let best=[0,0,0];parts.forEach(p=>{const s=specOf(p);if(cmpSpec(s,best)>0)best=s;});return best;}
+  return tokSel(sel.trim()).reduce((a,t)=>[a[0]+t.s[0],a[1]+t.s[1],a[2]+t.s[2]],[0,0,0]);
+}
+const fnCls=t=>t.k!=='fn'?'t-'+t.k:(t.s[0]?'t-id':t.s[1]?'t-cls':t.s[2]?'t-el':'t-uni');
+const hlSel=sel=>tokSel(sel).map(t=>`<span class="${fnCls(t)}">${esc(t.t)}</span>`).join('');
+const badge=(s,on)=>`<span class="badge${on?' on':''}"><b class="sa${s[0]?'':' z'}">${s[0]}</b><i>-</i><b class="sb${s[1]?'':' z'}">${s[1]}</b><i>-</i><b class="sc${s[2]?'':' z'}">${s[2]}</b></span>`;
+
+/* ══════════ REALCE DE CÓDIGO ══════════ */
+const NAMED=['blue','green','red','purple','orange','black','crimson'];
+const propOf=d=>d.split(':')[0].trim();
+const valOf=d=>d.slice(d.indexOf(':')+1).replace(/;$/,'').trim();
+function hlDecl(d,imp,key,extra){
+  const p=propOf(d),v=valOf(d).replace(/\s*!important/,''),hasImp=imp||/!important/.test(d);
+  const sw=NAMED.includes(v)?`<i class="sw" style="background:${v}"></i>`:'';
+  return `<span class="dl${key?' k':''}"><span class="t-prop">${esc(p)}</span><span class="p">: </span>${sw}<span class="t-val">${esc(v)}</span>${hasImp?' <span class="t-imp">!important</span>':''}${extra||''}<span class="p">;</span></span>`;
+}
+function hlCSS(src){
+  let out='',inB=false;
+  src.split(/([{}])/).forEach(seg=>{
+    if(seg==='{'){out+='<span class="p">{</span>';inB=true;}
+    else if(seg==='}'){out+='<span class="p">}</span>';inB=false;}
+    else if(inB) out+=seg.replace(/([\w-]+)(\s*:\s*)([^;]+)(;?)/g,(m,p,c,v)=>hlDecl(p+':'+v));
+    else {const lead=seg.match(/^\s*/)[0],trail=seg.match(/\s*$/)[0],mid=seg.trim();out+=lead+(mid?hlSel(mid):'')+(mid?trail:'');}
+  });
+  return out;
+}
+function hlHTML(src){
+  return src.replace(/<(\/?)([\w-]+)((?:\s+[\w-]+(?:="[^"]*")?)*)\s*>|[^<]+/g,(m,sl,tag,attrs)=>{
+    if(tag===undefined) return `<span class="h-t">${esc(m)}</span>`;
+    const a=(attrs||'').replace(/([\w-]+)(?:=("[^"]*"))?/g,(x,n,v)=>{
+      const c=n==='id'?'t-id':n==='class'?'t-cls':n==='style'?'t-inl':'h-v';
+      return `<span class="h-a">${n}</span>`+(v?`<span class="h-p">=</span><span class="${c}">${esc(v)}</span>`:'');
+    });
+    return `<span class="h-p">&lt;${sl}</span><span class="t-el">${tag}</span>${a}<span class="h-p">&gt;</span>`;
+  });
+}
+
+/* ══════════ DEMOS AO VIVO ══════════
+   O código mostrado no slide é o mesmo CSS aplicado, de verdade, dentro
+   de um Shadow DOM. Quem decide a cor é o navegador — a marcação
+   "vence / perde" segue a mesma lógica da cascata ensinada na aula. */
+const DEMOS={};
+const PV_BASE=`:host{display:block;color-scheme:light;color:#000;font:600 22px/1.3 'DM Sans',system-ui,sans-serif;}x-body{display:block;}:where(p){margin:.25em 0;}`;
+const mapSel=s=>s.replace(/\bbody\b/g,'x-body').replace(/\bhtml\b/g,':host');
+const RGB={'rgb(0, 0, 255)':'blue','rgb(0, 128, 0)':'green','rgb(255, 0, 0)':'red','rgb(128, 0, 128)':'purple','rgb(255, 165, 0)':'orange','rgb(0, 0, 0)':'black','rgb(220, 20, 60)':'crimson','rgb(0, 0, 238)':'azul padrão de link'};
+const colorName=c=>RGB[c]||c;
+let sandbox;
+function defDemo(id,cfg){
+  cfg.id=id;cfg.st=cfg.st||{};cfg.rules.forEach(r=>{r.d=[].concat(r.d);});
+  cfg._init=JSON.stringify({rules:cfg.rules,st:cfg.st});DEMOS[id]=cfg;
+}
+function resetDemo(id){const c=DEMOS[id];if(!c)return;const o=JSON.parse(c._init);c.rules=o.rules;c.st=o.st;renderDemo(id);}
+const demoHTML=c=>typeof c.html==='function'?c.html(c):c.html;
+function cssText(c){
+  return c.rules.filter(r=>!r.off).map(r=>`${mapSel(r.s)}{${r.d.map(d=>d+(r.imp&&propOf(d)===c.prop?' !important':'')).join(';')}}`).join('\n');
+}
+function fillRoot(root,c){
+  root.innerHTML=`<style>${PV_BASE}${c.base||''}</style><style>${cssText(c)}</style><x-body>${demoHTML(c)}</x-body>`;
+  root.querySelectorAll('a,button').forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
+}
+function candsFor(c,el){
+  const cands=[];
+  c.rules.forEach((r,idx)=>{
+    if(r.off)return;const d=r.d.find(x=>propOf(x)===c.prop);if(!d)return;
+    let ok=false;try{ok=el.matches(mapSel(r.s));}catch(e){}
+    if(ok)cands.push({r,idx,imp:!!r.imp,inl:0,spec:specOf(r.s),val:valOf(d)});
+  });
+  (el.getAttribute('style')||'').split(';').forEach(x=>{
+    if(x.includes(':')&&propOf(x)===c.prop)cands.push({inline:true,idx:1e9,imp:/!important/.test(x),inl:1,spec:[0,0,0],val:valOf(x).replace(/\s*!important/,'')});
+  });
+  /* a ordem da cascata: !important › inline › especificidade › ordem */
+  cands.sort((a,b)=>(b.imp-a.imp)||(b.inl-a.inl)||cmpSpec(b.spec,a.spec)||(b.idx-a.idx));
+  return cands;
+}
+function judge(c,root){
+  const el=root.querySelector(mapSel(c.target));if(!el)return null;
+  const cands=candsFor(c,el);let from=null;
+  if(!cands.length&&c.inherits!==false){let p=el.parentElement;while(p){const pc=candsFor(c,p);if(pc.length){from={c:pc[0],el:p};break;}p=p.parentElement;}}
+  return {el,cands,win:cands[0]||null,from,computed:getComputedStyle(el)[c.read||c.prop]};
+}
+function ruleMarks(c,res){
+  const m={};if(!res)return m;
+  res.cands.forEach((k,i)=>{if(!k.inline)m[k.idx]=i===0?'win':'lost';});
+  c.rules.forEach((r,idx)=>{
+    if(r.off||m[idx]||!r.d.some(d=>propOf(d)===c.prop))return;
+    let p=res.el.parentElement;while(p){let hit=false;try{hit=p.matches(mapSel(r.s));}catch(e){}if(hit){m[idx]='anc';break;}p=p.parentElement;}
+  });
+  if(!res.win&&res.from&&!res.from.c.inline)m[res.from.c.idx]='src';
+  return m;
+}
+const WHY={win:'✓ vence',lost:'perde',anc:'mira um ancestral',src:'↓ herdado daqui',off:'desligada'};
+function cssHTML(c,res){
+  const marks=ruleMarks(c,res);
+  return '<span class="cap">CSS</span>'+c.rules.map((r,idx)=>{
+    const m=r.off?(r.ghost?'ghost':'off'):(marks[idx]||'');
+    const cls=['rule',m,r.tog?'tog':'',r.extra?'extra':''].filter(Boolean).join(' ');
+    const tg=r.tog?'<span class="tg"></span>':'';
+    const decls=r.d.map(d=>{const key=propOf(d)===c.prop;
+      const chip=r.impTog&&key?`<button class="impchip${r.imp?' on':''}" data-imp="${idx}">!important</button>`:'';
+      return hlDecl(d,r.imp&&key&&!r.impTog,key,chip);});
+    const tail=`<span class="sp"></span><span class="why">${WHY[m]||''}</span>${badge(specOf(r.s))}`;
+    if(c.compact)return `<div class="${cls}" data-i="${idx}"><div class="l1"><span>${tg}<span class="sel">${hlSel(r.s)}</span> <span class="p">{</span> ${decls.join(' ')} <span class="p">}</span></span>${tail}</div></div>`;
+    return `<div class="${cls}" data-i="${idx}">${r.c?`<div class="cm">/* ${r.c} */</div>`:''}<div class="l1"><span>${tg}<span class="sel">${hlSel(r.s)}</span> <span class="p">{</span></span>${tail}</div>${decls.map(d=>`<div>    ${d}</div>`).join('')}<div><span class="p">}</span></div></div>`;
+  }).join('');
+}
+function roHTML(c,res){
+  if(!res)return '';let why;
+  if(res.win)why='venceu: '+(res.win.inline?'style inline':esc(res.win.r.s))+(res.win.imp?' !important':'');
+  else if(res.from)why='herdado de '+(res.from.c.inline?'style inline':esc(res.from.c.r.s));
+  else why='valor padrão';
+  return `<span class="k">${c.prop}:</span> <i class="sw" style="background:${res.computed}"></i><b>${colorName(res.computed)}</b> <span class="src">← ${why}</span>`;
+}
+function renderDemo(id){
+  const c=DEMOS[id];
+  if(!c._root){const h=document.createElement('div');sandbox.appendChild(h);c._root=h.attachShadow({mode:'open'});}
+  fillRoot(c._root,c);
+  const res=judge(c,c._root);c._res=res;
+  $$(`[data-pv="${id}"]`).forEach(m=>{
+    if(!m._root){m.innerHTML=`<div class="bar"><i></i><i></i><i></i><span>resultado no navegador</span></div><div class="host"></div><div class="ro"></div><div class="veil">?<small>o que o navegador vai mostrar</small></div>`;m._root=$('.host',m).attachShadow({mode:'open'});}
+    fillRoot(m._root,c);
+    const ro=$('.ro',m);if(c.noRo){ro.style.display='none';}else ro.innerHTML=c.ro?c.ro(c,res,m._root):roHTML(c,res);
+  });
+  $$(`[data-css="${id}"]`).forEach(m=>{
+    m.classList.add('cssb');if(c.compact)m.classList.add('compact');
+    m.innerHTML=cssHTML(c,res);
+    m.onclick=e=>{
+      const chip=e.target.closest('.impchip');
+      if(chip){const r=c.rules[+chip.dataset.imp];r.imp=!r.imp;renderDemo(id);return;}
+      const ru=e.target.closest('.rule.tog');
+      if(ru){const r=c.rules[+ru.dataset.i];r.off=!r.off;renderDemo(id);}
+    };
+  });
+  $$(`[data-html="${id}"]`).forEach(m=>{
+    m.innerHTML='<span class="cap">HTML</span>'+(c.htmlHL?c.htmlHL(c):hlHTML(demoHTML(c)));
+    m.classList.toggle('inlwin',!!(c.showInl&&res&&res.win&&res.win.inline));
+  });
+  if(c.after)c.after(c,res);
+}
+function shuffleDemo(id){const c=DEMOS[id];c.rules.push(c.rules.shift());renderDemo(id);}
+function swapDemo(id){DEMOS[id].rules.reverse();renderDemo(id);}
+
+/* ── definição dos demos ── */
+const P3=(a,b,c)=>[{s:a[0],d:'color: '+a[1]},{s:b[0],d:'color: '+b[1]}].concat(c?[{s:c[0],d:'color: '+c[1]}]:[]);
+function defineDemos(){
+  defDemo('open',{html:'<p id="mensagem" class="aviso">Olá!</p>',target:'p',prop:'color',
+    rules:P3(['p','blue'],['.aviso','green'],['#mensagem','red'])});
+  defDemo('anat',{html:'<p>Todo parágrafo fica azul.</p><span>Este span não é alvo da regra.</span>',target:'p',prop:'color',noRo:true,
+    base:'span{font-size:15px;font-weight:400;color:#555}',rules:[{s:'p',d:'color: blue'}]});
+  defDemo('inh1',{html:'<div class="pai">\n    <p>Texto do filho</p>\n</div>',target:'p',prop:'color',rules:[{s:'.pai',d:'color: blue'}]});
+  defDemo('exp',{html:'<div>\n    <p>Texto dentro da div</p>\n</div>',target:'p',prop:'color',
+    rules:[{s:'div',d:['color: purple','border: 2px solid black'],tog:true},{s:'p',d:['border: inherit'],off:true,tog:true,extra:true}],
+    ro:(c,res,root)=>{const cs=getComputedStyle(root.querySelector('p'));const b=cs.borderTopStyle==='none';
+      return `<span class="k">&lt;p&gt;</span> color: <i class="sw" style="background:${cs.color}"></i><b>${colorName(cs.color)}</b> <span class="src">← herdado</span> · border: <b>${b?'nenhuma':'2px solid'}</b> <span class="src">${b?'← não herdou':'← forçada com inherit'}</span>`;}});
+  defDemo('kw',{html:'<div class="card">\n    Card com um <a href="#">link</a> dentro.\n</div>',target:'a',prop:'color',st:{k:null},
+    base:':where(.card){padding:10px 14px;font-weight:500;font-size:19px}:where(a){padding:0 5px}',
+    rules:[{s:'a',c:'tema do site: vale para todo link',d:['color: crimson','border: 1px solid crimson']},
+           {s:'.card',d:['color: green','border: 2px dashed green']},
+           {s:'.card a',c:'e o link dentro do card?',d:['color: ?','border: ?'],off:true,ghost:true}],
+    ro:(c,res,root)=>{const cs=getComputedStyle(root.querySelector('a'));const none=cs.borderTopStyle==='none';
+      return `<span class="k">&lt;a&gt;</span> color: <i class="sw" style="background:${cs.color}"></i><b>${colorName(cs.color)}</b> · border: <b>${none?'nenhuma':cs.borderTopWidth+' '+cs.borderTopStyle+' '+colorName(cs.borderTopColor)}</b>`;},
+    after:kwPanel});
+  defDemo('chk',{html:'<div class="card">\n    <span>Oi!</span>\n</div>',target:'span',prop:'color',
+    rules:[{s:'.card',d:['color: green','font-weight: bold','padding: 24px','border: 2px solid green']}],
+    ro:(c,res,root)=>{const cs=getComputedStyle(root.querySelector('span'));
+      return `<span class="k">&lt;span&gt;</span> color: <b>${colorName(cs.color)}</b> <span class="src">herdou</span> · font-weight: <b>${cs.fontWeight}</b> <span class="src">herdou</span><br>padding: <b>${cs.paddingTop}</b> · border: <b>${cs.borderTopStyle==='none'?'nenhuma':cs.borderTopStyle}</b> <span class="dim">← valores iniciais, não herdou</span>`;}});
+  defDemo('r1',{html:'<p class="texto">Olá!</p>',target:'p',prop:'color',rules:P3(['p','blue'],['.texto','green'])});
+  defDemo('r2',{html:'<div>\n    <p class="texto">Olá!</p>\n</div>',target:'p',prop:'color',rules:P3(['div p','blue'],['.texto','green'])});
+  defDemo('r3',{html:'<div id="principal">\n    <p class="texto">Olá!</p>\n</div>',target:'p',prop:'color',rules:P3(['#principal p','blue'],['.texto','green'])});
+  defDemo('qty',{st:{n:5},target:'p',prop:'color',
+    html:c=>'<div>'.repeat(c.st.n)+'<p class="texto">Olá!</p>'+'</div>'.repeat(c.st.n),
+    htmlHL:c=>hlHTML('<div>')+`   <span class="cm">← ${c.st.n} divs, um dentro do outro</span>\n    `+hlHTML('<p class="texto">Olá!</p>')+'\n'+hlHTML('</div>'),
+    rules:P3(['div div div div div p','blue'],['.texto','red'])});
+  const MAIN={html:'<div id="app">\n    <p class="texto destaque">Olá, mundo!</p>\n</div>',target:'p',prop:'color',compact:true};
+  const mainRules=tog=>[['p','blue'],['div p','green'],['.texto','orange'],['#app p','purple'],['.destaque','red']].map(x=>({s:x[0],d:'color: '+x[1],tog}));
+  defDemo('main',{...MAIN,rules:mainRules(false)});
+  defDemo('main2',{...MAIN,rules:mainRules(true)});
+  defDemo('tie',{st:{rev:false},target:'p',prop:'color',
+    html:c=>`<p class="${c.st.rev?'destaque texto':'texto destaque'}">Olá!</p>`,
+    rules:P3(['.texto','blue'],['.destaque','red']),
+    after:(c,res)=>{$$('#tie-opts .opt').forEach(o=>o.classList.toggle('ok',o.textContent.trim()===colorName(res.computed)));}});
+  defDemo('inl',{html:'<p id="msg" style="color: red;">Olá!</p>',target:'p',prop:'color',
+    rules:[{s:'p',d:'color: blue',tog:true},{s:'#msg',d:'color: green',off:true,tog:true,extra:true}]});
+  defDemo('imp',{st:{inl:false},target:'p',prop:'color',showInl:true,
+    html:c=>`<p id="titulo"${c.st.inl?' style="color: green;"':''}>Olá!</p>`,
+    rules:[{s:'#titulo',d:'color: blue',impTog:true},{s:'p',d:'color: red',imp:true,impTog:true}],after:impPanel});
+  const INTEG={html:'<div class="container" id="app">\n    <p class="texto">CSS é estranho?</p>\n</div>',target:'p',prop:'color',compact:true};
+  const integRules=tog=>[['body','black'],['.container','blue'],['#app','green'],['p','red'],['.texto','purple']].map(x=>({s:x[0],d:'color: '+x[1],tog}));
+  defDemo('integ',{...INTEG,rules:integRules(false)});
+  defDemo('integ2',{...INTEG,rules:integRules(true)});
+  defDemo('btn',{html:'<form id="form">\n    <button class="btn-danger">Excluir conta</button>\n</form>',target:'button',prop:'background',read:'backgroundColor',inherits:false,compact:true,
+    base:':where(button){font:inherit;font-size:18px;color:#fff;border:0;padding:10px 22px;border-radius:8px;}',
+    rules:[{s:'button',d:'background: blue',tog:true},{s:'.btn-danger',d:'background: red',tog:true},{s:'#form button',d:'background: green',tog:true},{s:'#form .btn-danger',d:'background: red',off:true,tog:true,extra:true}]});
+  defDemo('dbg',{html:'<p id="mensagem" class="erro">\n    Senha incorreta\n</p>',target:'p',prop:'color',compact:true,
+    rules:[{s:'p',d:'color: black',tog:true},{s:'.erro',d:'color: red',tog:true},{s:'#mensagem',d:'color: blue',tog:true},{s:'#mensagem.erro',d:'color: red',off:true,tog:true,extra:true}]});
+  Object.keys(DEMOS).forEach(renderDemo);
+}
+
+/* ── S7: árvore de herança ── */
+const TCOL=[null,'blue','red','green','purple'];let TREE;
+function treeReset(){TREE=[{t:'body',c:'blue'},{t:'div',c:null},{t:'p',c:null},{t:'span',c:null}];treeRender();}
+function treeRender(){
+  const el=$('#tree');let cur=null,from=null;
+  el.innerHTML=TREE.map((n,i)=>{
+    if(n.c){cur=n.c;from=n.t;}
+    const own=!!n.c,st=own?`<b>color: ${n.c}</b> · declarado aqui`:cur?`↓ <b>${cur}</b> · herdado de &lt;${from}&gt;`:'valor inicial · ninguém declarou';
+    return `<div class="tnode ${own?'decl':cur?'inh':''}" style="margin-left:${i*34}px" data-i="${i}">${i?'<span class="elbow"></span>':''}<span class="tagn">&lt;${n.t}&gt;</span><span class="st">${st}</span><span class="smp" style="color:${cur||'black'}">texto</span></div>`;
+  }).join('');
+  $$('.tnode',el).forEach(d=>d.onclick=()=>{const n=TREE[+d.dataset.i];n.c=TCOL[(TCOL.indexOf(n.c)+1)%TCOL.length];treeRender();});
+}
+
+/* ── S10: inherit / initial / unset / revert ── */
+const KW={
+  inherit:{s:'pegue o valor do pai',d:'Copia o valor do elemento pai — mesmo em propriedades que normalmente não herdam. Reparem: até a borda tracejada veio junto.',w:'Quero que o link acompanhe a cor do texto em volta.'},
+  initial:{s:'valor inicial da especificação',d:'Volta ao valor "de fábrica" que a especificação do CSS define: <code>color</code> preto, sem borda. Ignora o pai e o tema do site.',w:'Quero zerar a propriedade. Cuidado: initial não é o padrão do navegador — <code>display: initial</code> vira inline até numa div.'},
+  unset:{s:'inherit ou initial, conforme a propriedade',d:'<code>color</code> herda → age como <strong>inherit</strong> (verde do pai). <code>border</code> não herda → age como <strong>initial</strong> (sem borda).',w:'Quero limpar o que foi definido e deixar cada propriedade se comportar do jeito natural dela.'},
+  revert:{s:'volta ao padrão do navegador',d:'Desfaz o CSS escrito pelo autor da página e devolve o estilo padrão do navegador: o link azul de sempre.',w:'Meu CSS (ou uma biblioteca) descaracterizou um elemento e quero o visual padrão de volta.'}
+};
+function kwSet(k){
+  const c=DEMOS.kw,r=c.rules[2];c.st.k=c.st.k===k?null:k;k=c.st.k;
+  r.off=!k;r.ghost=!k;r.d=k?['color: '+k,'border: '+k]:['color: ?','border: ?'];renderDemo('kw');
+}
+function kwPanel(c){
+  const k=c.st.k,box=$('#kws');
+  box.innerHTML=Object.keys(KW).map(n=>`<button class="kw${k===n?' sel':''}" data-k="${n}"><div class="n">${n}</div><div class="s">${KW[n].s}</div></button>`).join('');
+  $$('.kw',box).forEach(b=>b.onclick=()=>kwSet(b.dataset.k));
+  $('#kwx').innerHTML=k?`<div class="lb">O que faz</div><p>${KW[k].d}</p><div class="lb">Quando usar</div><p>${KW[k].w}</p>`
+    :`<div class="lb">Ponto de partida</div><p>Sem regra própria, o link do card segue o <strong>tema do site</strong>: carmim, com borda sólida.</p><div class="lb">O desafio</div><p>Escolham uma palavra ao lado e prevejam: como fica a <strong>cor</strong>? E a <strong>borda</strong>?</p>`;
+}
+
+/* ── S15: calculadora de especificidade ── */
+const PRE=['p','.texto','#titulo','div .texto','#principal .texto p','a:hover','li::before'];
+const KIND={id:['ID','pink'],cls:['classe','amber'],attr:['atributo','amber'],pc:['pseudo-classe','amber'],pe:['pseudo-elemento','cyan'],el:['elemento','cyan'],uni:['não conta','dim'],comb:['não conta','dim'],comma:['lista','dim'],unk:['?','dim'],fn:['função','soft']};
+function calcRender(sel,rv,idx){
+  $$('#presets .preset').forEach((b,i)=>b.classList.toggle('sel',i===idx));
+  const disp=$('#seldisp'),msg=$('#calc-msg'),set=(a,b,c)=>{$('#sc-a').textContent=a;$('#sc-b').textContent=b;$('#sc-c').textContent=c;};
+  if(!sel){disp.classList.remove('rv');disp.innerHTML='<p class="dim mono" style="font-size:14px;margin-top:30px;">escolha um seletor ao lado ou aperte →</p>';set('?','?','?');msg.textContent='';return;}
+  const toks=tokSel(sel.trim());
+  disp.innerHTML=toks.map(t=>{const [lab,col]=KIND[t.k];const space=/^\s+$/.test(t.t);
+    const c=t.k==='fn'?(t.s[0]?'pink':t.s[1]?'amber':t.s[2]?'cyan':'dim'):col;
+    return `<div class="stok"><span class="t" style="color:var(--${c})">${space?'&nbsp;':esc(t.t)}</span><span class="g" style="color:var(--${c});border-color:currentColor">${space?'espaço':lab}</span></div>`;}).join('');
+  disp.classList.toggle('rv',!!rv);
+  if(!rv){set('?','?','?');msg.innerHTML='<span class="amber">Quanto vale?</span> Contem os pedaços de cada tipo.';return;}
+  const s=specOf(sel);set(s[0],s[1],s[2]);
+  const cnt={};toks.forEach(t=>{if(['id','cls','attr','pc','pe','el'].includes(t.k)||(t.k==='fn'&&(t.s[0]||t.s[1]||t.s[2])))cnt[t.k]=(cnt[t.k]||0)+1;});
+  const LB={fn:[':is()/:not() (vale o argumento)','soft']};const parts=['id','cls','attr','pc','fn','el','pe'].filter(k=>cnt[k]).map(k=>{const [lab,col]=LB[k]||KIND[k];return `<span class="${col}">${cnt[k]} ${lab}${cnt[k]>1&&k!=='fn'?'s':''}</span>`;});
+  msg.innerHTML=(parts.length?parts.join(' <span class="dim">+</span> '):'<span class="dim">nada aqui conta ponto</span>')+` <span class="dim">→</span> <strong class="mono">${s.join('-')}</strong>`;
+}
+function calcInit(){
+  $('#presets').innerHTML=PRE.map((p,i)=>`<button class="preset" data-i="${i}">${esc(p)}</button>`).join('');
+  $$('#presets .preset').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;$('#calc-in').value='';
+    const open=step===2*i+1;jumpStep(open?2*i+2:2*i+1);});
+  $('#calc-in').addEventListener('input',e=>{const v=e.target.value;if(v.trim())calcRender(v,true,-1);else calcRender(null);});
+}
+
+/* ── S17, S21, S23: controles ── */
+function qtyAdd(d){const c=DEMOS.qty;c.st.n=Math.max(1,Math.min(12,c.st.n+d));c.rules.find(r=>/div/.test(r.s)).s=Array(c.st.n).fill('div').join(' ')+' p';renderDemo('qty');}
+function tieHtml(){const c=DEMOS.tie;c.st.rev=!c.st.rev;renderDemo('tie');}
+function impInline(){const c=DEMOS.imp;c.st.inl=!c.st.inl;renderDemo('imp');}
+function impPanel(c,res){
+  const imps=res.cands.filter(k=>k.imp),w=res.win,name=w.inline?'o estilo inline':`<code>${esc(w.r.s)}</code>`;let h,t;
+  if(imps.length===1){h='Uma declaração !important na disputa';t=`Ela vence todas as declarações normais — não importa o placar delas, nem se existe estilo inline. Leva ${name}.`;}
+  else if(imps.length>1){h='Mais de uma !important';t=`Entre elas, volta a valer o de sempre: especificidade primeiro, ordem depois. Leva ${name}.`;}
+  else if(w.inline){h='Nenhuma !important';t='Sem ninguém furando a fila, o estilo inline vence qualquer seletor.';}
+  else{h='Nenhuma !important, nenhum inline';t=`Decide o placar A-B-C: ${name} (${w.spec.join('-')}) vence.`;}
+  $('#imp-why').innerHTML=`<h3 class="red">${h}</h3><p>${t}</p>`;
+  const b=$('#imp-inl');b.classList.toggle('on',c.st.inl);b.textContent=(c.st.inl?'− tirar o':'+ colocar')+' estilo inline'+(c.st.inl?'':' no HTML');
+}
+
+/* ══════════ NAVEGAÇÃO POR PASSOS ══════════ */
+const SECTIONS=[{n:'Abertura',from:'s1',t:'0–5 min'},{n:'Herança',from:'s6',t:'5–15 min'},{n:'Especificidade',from:'s12',t:'15–25 min'},{n:'Cascata',from:'s21',t:'25–32 min'},{n:'Debugging',from:'s28',t:'32–37 min'},{n:'Fecho',from:'s32',t:'37–45 min'}];
+let slides=[],cur=0,step=0;
+const HOOKS={
+  s15:k=>{if(k===0)calcRender(null);else{const i=(k-1)>>1;calcRender(PRE[i],k%2===0,i);}},
+  s16:k=>{const r=Math.min(2,k>>1);$$('#s16 .round').forEach((e,i)=>e.classList.toggle('on',i===r));$$('#s16 .rtab').forEach((e,i)=>e.classList.toggle('on',i===r));}
+};
+function maxStep(sl){
+  if(sl._max!==undefined)return sl._max;let m=+(sl.dataset.steps||0);
+  $$('[data-step],[data-mark],[data-extra]',sl).forEach(e=>{m=Math.max(m,+(e.dataset.step||0),+(e.dataset.mark||0),+(e.dataset.extra||0));});
+  return sl._max=m;
+}
+function applyStep(){
+  const sl=slides[cur];
+  $$('[data-step]',sl).forEach(e=>{e.classList.toggle('shown',step>=+e.dataset.step);if(e.classList.contains('cssb'))e.classList.toggle('marked',step>=+(e.dataset.mark||e.dataset.step));});
+  $$('[data-extra]',sl).forEach(e=>e.classList.toggle('xtra',step>=+e.dataset.extra));
+  if(HOOKS[sl.id])HOOKS[sl.id](step);
+  const mx=maxStep(sl),h=$('#hint');
+  $('.pips',h).innerHTML=Array.from({length:mx},(_,i)=>`<i class="${i<step?'f':''}"></i>`).join('');
+  $('.tx',h).textContent=mx&&step<mx?'→ revela':'';h.classList.toggle('pending',step<mx);
+}
+function jumpStep(k){step=k;applyStep();}
+function resetSlide(sl){
+  $$('.picked',sl).forEach(e=>e.classList.remove('picked'));$$('.flip',sl).forEach(e=>e.classList.remove('flip'));
+  new Set($$('[data-css],[data-pv],[data-html]',sl).map(e=>e.dataset.css||e.dataset.pv||e.dataset.html)).forEach(resetDemo);
+  $$('.timer',sl).forEach(timerReset);
+  if(sl.id==='s7')treeReset();
+  if(sl.id==='s15')$('#calc-in').value='';
+}
+function revealSlide(sl){$$('.reveal',sl).forEach((el,i)=>{el.classList.remove('vis');setTimeout(()=>el.classList.add('vis'),i*80+140);});}
+function goTo(i,atEnd){
+  i=Math.max(0,Math.min(i,slides.length-1));
+  slides.forEach(s=>s.classList.remove('on'));cur=i;const sl=slides[cur];sl.classList.add('on');
+  if(!atEnd)resetSlide(sl);
+  step=atEnd?maxStep(sl):0;applyStep();revealSlide(sl);
+  $$('.dot').forEach((d,j)=>d.classList.toggle('on',j===cur));
+  $('#prog-fill').style.width=((cur/(slides.length-1))*100)+'%';
+  $('#ctr').textContent=String(cur+1).padStart(2,'0')+' / '+slides.length;
+  let si=0;SECTIONS.forEach((s,j)=>{if(cur>=s.idx)si=j;});
+  $$('#rail .ri').forEach((e,j)=>{e.classList.toggle('on',j===si);e.classList.toggle('done',j<si);});
+  if($('#notes').classList.contains('open'))fillNotes();
+}
+function fwd(){const sl=slides[cur];if(step<maxStep(sl)){step++;applyStep();}else if(cur<slides.length-1)goTo(cur+1);}
+function back(){if(step>0){step--;applyStep();}else if(cur>0)goTo(cur-1,true);}
+function fillNotes(){const a=$('aside.nt ul',slides[cur]);$('#notes-ul').innerHTML=a?a.innerHTML:'<li>Sem notas para este slide.</li>';}
+function toggleNotes(){const n=$('#notes');n.classList.toggle('open');$('#btn-notes').classList.toggle('act',n.classList.contains('open'));fillNotes();}
+function toggleFS(){try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen();}catch(e){}}
+
+/* ── timers ── */
+function timerPaint(b){const s=+b.dataset.left;b.textContent='⏱ '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function timerReset(b){clearInterval(b._t);b._t=null;b.dataset.left=b.dataset.s;b.classList.remove('run','done');timerPaint(b);}
+function timerToggle(b){
+  if(b._t){clearInterval(b._t);b._t=null;b.classList.remove('run');return;}
+  if(+b.dataset.left<=0)b.dataset.left=b.dataset.s;
+  b.classList.add('run');b.classList.remove('done');timerPaint(b);
+  b._t=setInterval(()=>{b.dataset.left=+b.dataset.left-1;timerPaint(b);if(+b.dataset.left<=0){clearInterval(b._t);b._t=null;b.classList.remove('run');b.classList.add('done');b.textContent='⏱ tempo!';}},1000);
+}
+
+/* ── QR do quiz ── */
+function setQuizLink(url,silent){
+  url=(url||'').trim();if(!url)return;
+  if(!/^https?:\/\//i.test(url))url='https://'+url;
+  try{const q=qrcode(0,'M');q.addData(url);q.make();const box=$('#qr');box.innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});box.classList.add('has');}catch(e){}
+  const l=$('#qlink');l.textContent=url.replace(/^https?:\/\//,'');l.classList.add('has');
+  $('#qinput').value=url;
+  if(!silent){try{localStorage.setItem('aula-css-quiz',url);}catch(e){}}
+}
+
+/* ── escala do palco ── */
+function fit(){const k=Math.min(document.body.clientWidth/1280,document.body.clientHeight/720);$('#stage').style.setProperty('--k',k);}
+
+/* ══════════ INICIALIZAÇÃO ══════════ */
+function init(){
+  sandbox=document.createElement('div');sandbox.style.cssText='position:absolute;left:-9999px;top:0;width:600px;';document.body.appendChild(sandbox);
+  slides=$$('.slide');
+  SECTIONS.forEach(s=>{s.idx=slides.findIndex(x=>x.id===s.from);});
+  $('#rail').innerHTML=SECTIONS.map((s,i)=>`${i?'<span class="sep"></span>':''}<span class="ri" data-i="${s.idx}"><b>${String(i+1).padStart(2,'0')}</b>${s.n}</span>`).join('');
+  $$('#rail .ri').forEach(e=>e.onclick=()=>goTo(+e.dataset.i));
+  const starts=new Set(SECTIONS.map(s=>s.idx));
+  $('#nav').innerHTML=slides.map((_,i)=>`<div class="dot${i&&starts.has(i)?' gap':''}" title="Slide ${i+1}"></div>`).join('');
+  $$('.dot').forEach((d,i)=>d.onclick=()=>goTo(i));
+  $$('[data-hl]').forEach(el=>{el.innerHTML=el.dataset.hl==='css'?hlCSS(el.textContent):hlHTML(el.textContent);});
+  $$('.spc[data-sel]').forEach(el=>{$('.top',el).innerHTML=`<span>${hlSel(el.dataset.sel)}</span>${badge(specOf(el.dataset.sel),true)}`;});
+  treeReset();calcInit();defineDemos();
+  $$('.timer').forEach(b=>{timerReset(b);b.onclick=()=>timerToggle(b);});
+  const ACT={shuffle:a=>shuffleDemo(a),swap:a=>swapDemo(a),tree:()=>treeReset(),jump:a=>jumpStep(+a),qty:a=>qtyAdd(+a),tieHtml,impInline,
+    quiz:()=>setQuizLink($('#qinput').value),notes:toggleNotes,fs:toggleFS,back,fwd};
+  document.addEventListener('click',e=>{
+    const act=e.target.closest('[data-act]');if(act){const [n,arg]=act.dataset.act.split(':');ACT[n](arg);}
+    const o=e.target.closest('.opt');
+    if(o){const was=o.classList.contains('picked');$$('.opt',o.parentElement).forEach(x=>x.classList.remove('picked'));if(!was)o.classList.add('picked');}
+    const m=e.target.closest('.myth');if(m)m.classList.toggle('flip');
+    const b=e.target.closest('button');if(b)b.blur();
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.target.matches&&e.target.matches('input,textarea')){if(e.key==='Enter'&&e.target.id==='qinput')setQuizLink(e.target.value);if(e.key==='Escape')e.target.blur();return;}
+    if(e.ctrlKey||e.metaKey||e.altKey)return;const k=e.key;
+    if((k===' '||k==='Enter')&&e.target.closest&&e.target.closest('button'))return;
+    if(k==='ArrowRight'||k==='ArrowDown'||k===' '||k==='PageDown'||k==='Enter'){e.preventDefault();e.shiftKey?goTo(cur+1):fwd();}
+    else if(k==='ArrowLeft'||k==='ArrowUp'||k==='PageUp'||k==='Backspace'){e.preventDefault();e.shiftKey?goTo(cur-1):back();}
+    else if(k==='Home')goTo(0);else if(k==='End')goTo(slides.length-1);
+    else if(k==='n'||k==='N')toggleNotes();
+    else if(k==='f'||k==='F')toggleFS();
+    else if(k==='t'||k==='T'){const t=$('.timer',slides[cur]);if(t)timerToggle(t);}
+  });
+  window.addEventListener('resize',fit);fit();
+  let saved='';try{saved=localStorage.getItem('aula-css-quiz')||'';}catch(e){}
+  if(QUIZ_LINK||saved)setQuizLink(QUIZ_LINK||saved,true);
+  if(QUIZ_LINK){$('#qedit').style.display='none';$('#qlink').textContent=QUIZ_TITLE;}
+  const h=parseInt((location.hash||'').slice(1),10);
+  goTo(h>=1&&h<=slides.length?h-1:0);
+}
+init();
+</script>
+</body>
+</html>
